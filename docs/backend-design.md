@@ -234,7 +234,7 @@ curl <api-base-url>/v1/health
 
 ## 8. Test Environment Only (for now)
 
-Environment plan at this stage:
+Environment plan at this stage:p
 - `test` only.
 - No staging or production deployment in this phase.
 - Keep resource names explicitly suffixed with `-test`.

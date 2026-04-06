@@ -1,12 +1,12 @@
 # Enterprise App Scaffold
 
-OpenAPI-first TypeScript REST API deployed to API Gateway + Lambda on AWS (test environment first).
+TypeScript REST API scaffold deployed to API Gateway + Lambda on AWS (test environment first).
 
 ## What is implemented
 
 - TypeScript Lambda handler for `GET /v1/health`.
-- OpenAPI contract in `openapi/openapi.yaml`.
-- API Gateway routing + Lambda integration defined in OpenAPI via `x-amazon-apigateway-integration`.
+- API Gateway routing + Lambda integration currently defined in `infra/template.yaml` (SAM `Events.Api`).
+- OpenAPI contract file exists in `openapi/openapi.yaml`, but it is not currently wired into SAM deployment.
 - Jest-based unit and integration tests.
 - AWS SAM/CloudFormation template in `infra/template.yaml`.
 
@@ -47,6 +47,14 @@ npm run test:integration:local
 
 Set your artifact bucket first:
 
+PowerShell:
+
+```powershell
+$env:ARTIFACT_BUCKET = "<your-artifact-bucket>"
+```
+
+Bash:
+
 ```bash
 export ARTIFACT_BUCKET=<your-artifact-bucket>
 ```
@@ -76,7 +84,7 @@ aws cloudformation describe-stacks \
 Verify endpoint:
 
 ```bash
-curl <HealthEndpoint from stack outputs>
+curl <WebEndpoint from stack outputs>v1/health
 ```
 
 Expected body:
