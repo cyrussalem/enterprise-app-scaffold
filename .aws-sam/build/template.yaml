@@ -1,0 +1,29 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: enterprise-app-test
+Transform:
+- AWS::Serverless-2016-10-31
+Resources:
+  healthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: healthFunction
+      Handler: handlers/get-health.handler
+      Runtime: nodejs22.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: Health endpoint Lambda function.
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /v1/health
+            Method: GET
+    Metadata:
+      SamResourceId: healthFunction
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/

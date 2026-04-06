@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  title: Enterprise App Scaffold API
+  version: 0.1.0
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: Returns service health status
+      responses:
+        '200':
+          description: Health response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - message
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        httpMethod: POST
+        uri: arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/{function-arn}/invocations
