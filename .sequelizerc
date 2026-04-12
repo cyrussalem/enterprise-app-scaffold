@@ -1,0 +1,7 @@
+const path = require("path");
+
+module.exports = {
+  config: path.resolve("src", "db", "config.cjs"),
+  "models-path": path.resolve("src", "db", "models"),
+  "migrations-path": path.resolve("migrations"),
+};

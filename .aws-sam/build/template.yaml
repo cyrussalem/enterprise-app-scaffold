@@ -2,24 +2,143 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: enterprise-app-test
 Transform:
 - AWS::Serverless-2016-10-31
+Parameters:
+  Environment:
+    Type: String
+    Default: test
+  DBUsername:
+    Type: String
+    Default: postgres
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
 Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: enterprise-app-${Environment}-vpc
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: ''
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: enterprise-app-${Environment}-private-a
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone:
+        Fn::Select:
+        - 1
+        - Fn::GetAZs: ''
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Sub: enterprise-app-${Environment}-private-b
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for RDS PostgreSQL
+      SubnetIds:
+      - Ref: PrivateSubnetA
+      - Ref: PrivateSubnetB
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId:
+        Ref: VPC
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId:
+        Ref: VPC
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        SourceSecurityGroupId:
+          Ref: LambdaSecurityGroup
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier:
+        Fn::Sub: enterprise-app-${Environment}-db
+      Engine: postgres
+      EngineVersion: '16'
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      StorageType: gp3
+      MasterUsername:
+        Ref: DBUsername
+      MasterUserPassword:
+        Ref: DBPassword
+      DBName: enterprise_app
+      VPCSecurityGroups:
+      - Ref: DBSecurityGroup
+      DBSubnetGroup:
+        Ref: DBSubnetGroup
+      PubliclyAccessible: false
+      DeletionProtection: false
+      BackupRetentionPeriod: 1
   healthFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: healthFunction
-      Handler: handlers/get-health.handler
+      Handler: dist/handlers/get-health.handler
       Runtime: nodejs22.x
       Architectures:
       - x86_64
       MemorySize: 128
       Timeout: 100
       Description: Health endpoint Lambda function.
+      VpcConfig:
+        SecurityGroupIds:
+        - Ref: LambdaSecurityGroup
+        SubnetIds:
+        - Ref: PrivateSubnetA
+        - Ref: PrivateSubnetB
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::GetAtt:
+            - PostgresInstance
+            - Endpoint.Address
+          DB_PORT:
+            Fn::GetAtt:
+            - PostgresInstance
+            - Endpoint.Port
+          DB_NAME: enterprise_app
+          DB_USERNAME:
+            Ref: DBUsername
+          DB_PASSWORD:
+            Ref: DBPassword
       Events:
         Api:
           Type: Api
           Properties:
             Path: /v1/health
             Method: GET
+      Policies:
+      - VPCAccessPolicy: {}
     Metadata:
       SamResourceId: healthFunction
 Outputs:
@@ -27,3 +146,15 @@ Outputs:
     Description: API Gateway endpoint URL for Prod stage
     Value:
       Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/
+  DBEndpoint:
+    Description: RDS PostgreSQL endpoint
+    Value:
+      Fn::GetAtt:
+      - PostgresInstance
+      - Endpoint.Address
+  DBPort:
+    Description: RDS PostgreSQL port
+    Value:
+      Fn::GetAtt:
+      - PostgresInstance
+      - Endpoint.Port

@@ -1,43 +1,146 @@
-# This is the SAM template that represents the architecture of your serverless application
-# https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-template-basics.html
-
-# The AWSTemplateFormatVersion identifies the capabilities of the template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/format-version-structure.html
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   enterprise-app-test
 
-# Transform section specifies one or more macros that AWS CloudFormation uses to process your template
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 Transform:
 - AWS::Serverless-2016-10-31
 
-# Resources declares the AWS resources that you want to include in the stack
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
-Resources:
-  # Each Lambda function is defined by properties:
-  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+Parameters:
+  Environment:
+    Type: String
+    Default: test
+  DBUsername:
+    Type: String
+    Default: postgres
+    NoEcho: true
+  DBPassword:
+    Type: String
+    NoEcho: true
 
-  # This is a Lambda function config associated with the source code: get-all-items.js
+Resources:
+
+  # ---- VPC & Networking ----
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub enterprise-app-${Environment}-vpc
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub enterprise-app-${Environment}-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: !Sub enterprise-app-${Environment}-private-b
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for RDS PostgreSQL
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  # ---- Security Groups ----
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  # ---- RDS PostgreSQL ----
+
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub enterprise-app-${Environment}-db
+      Engine: postgres
+      EngineVersion: "16"
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      StorageType: gp3
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBName: enterprise_app
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      DBSubnetGroup: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      DeletionProtection: false
+      BackupRetentionPeriod: 1
+
+  # ---- Lambda ----
+
   healthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../dist
-      Handler: handlers/get-health.handler
+      CodeUri: ../
+      Handler: dist/handlers/get-health.handler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
       MemorySize: 128
       Timeout: 100
       Description: Health endpoint Lambda function.
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnetA
+          - !Ref PrivateSubnetB
+      Environment:
+        Variables:
+          DB_HOST: !GetAtt PostgresInstance.Endpoint.Address
+          DB_PORT: !GetAtt PostgresInstance.Endpoint.Port
+          DB_NAME: enterprise_app
+          DB_USERNAME: !Ref DBUsername
+          DB_PASSWORD: !Ref DBPassword
       Events:
         Api:
           Type: Api
           Properties:
             Path: /v1/health
             Method: GET
+      Policies:
+        - VPCAccessPolicy: {}
 
 Outputs:
   WebEndpoint:
     Description: "API Gateway endpoint URL for Prod stage"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/"
+  DBEndpoint:
+    Description: "RDS PostgreSQL endpoint"
+    Value: !GetAtt PostgresInstance.Endpoint.Address
+  DBPort:
+    Description: "RDS PostgreSQL port"
+    Value: !GetAtt PostgresInstance.Endpoint.Port

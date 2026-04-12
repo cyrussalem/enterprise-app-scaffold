@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(docker compose:*)",
+      "Bash(node -e ':*)",
+      "Bash(sam local:*)",
+      "Bash(curl -s http://127.0.0.1:3000/v1/health)",
+      "Bash(break)",
+      "Bash(where sam:*)",
+      "Read(//c/Program Files/Amazon/AWSSAMCLI/bin/**)",
+      "Bash(cmd.exe /c \"where sam\")",
+      "Bash(export PATH=\"$PATH:/c/Program Files/Amazon/AWSSAMCLI/bin\")",
+      "Bash(sam --version)"
+    ]
+  }
+}

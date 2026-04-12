@@ -7,7 +7,8 @@ module.exports = {
       testMatch: ["<rootDir>/test/unit/**/*.test.ts"],
       roots: ["<rootDir>/src", "<rootDir>/test"],
       moduleFileExtensions: ["ts", "js"],
-      collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"]
+      collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
+      testTimeout: 60000
     },
     {
       displayName: "integration",
@@ -15,7 +16,8 @@ module.exports = {
       testEnvironment: "node",
       testMatch: ["<rootDir>/test/integration/**/*.test.ts"],
       roots: ["<rootDir>/test"],
-      moduleFileExtensions: ["ts", "js"]
+      moduleFileExtensions: ["ts", "js"],
+      testTimeout: 30000
     }
   ]
 };
