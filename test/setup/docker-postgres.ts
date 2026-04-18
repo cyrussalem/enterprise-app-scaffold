@@ -6,14 +6,12 @@ const COMPOSE_FILE = "docker-compose.test.yml";
 
 export async function startPostgres(): Promise<void> {
   execSync(
-    `docker compose -f ${COMPOSE_FILE} up -d --wait`,
+    `docker compose -f ${COMPOSE_FILE} up -d --wait postgres`,
     { stdio: "inherit" }
   );
 
   const sequelize = getSequelize();
 
-  // Run migrations programmatically using Sequelize sync
-  // This avoids needing sequelize-cli to parse TypeScript migrations at runtime
   initModels();
   await sequelize.sync({ force: true });
 }
@@ -22,7 +20,11 @@ export async function stopPostgres(): Promise<void> {
   await closeSequelize();
 
   execSync(
-    `docker compose -f ${COMPOSE_FILE} down -v`,
+    `docker compose -f ${COMPOSE_FILE} stop postgres`,
+    { stdio: "inherit" }
+  );
+  execSync(
+    `docker compose -f ${COMPOSE_FILE} rm -f postgres`,
     { stdio: "inherit" }
   );
 }

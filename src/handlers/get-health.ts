@@ -1,7 +1,21 @@
-import type { APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { initModels } from "../db/models";
+import { getRequestUser } from "../auth/request-user";
 
-export const handler = async (): Promise<APIGatewayProxyResult> => {
+export const handler = async (
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> => {
+  let user;
+  try {
+    user = getRequestUser(event);
+  } catch {
+    return {
+      statusCode: 401,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ok: false, message: "unauthenticated" }),
+    };
+  }
+
   try {
     const { Device } = initModels();
     const devices = await Device.findAll();
@@ -12,6 +26,7 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
       body: JSON.stringify({
         ok: true,
         message: "success",
+        user,
         devices,
       }),
     };

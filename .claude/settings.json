@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec *)",
+      "Bash(curl -s -X POST http://127.0.0.1:9229/ -H \"X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth\" -H \"Content-Type: application/x-amz-json-1.1\" -d '{\"AuthFlow\":\"USER_PASSWORD_AUTH\",\"ClientId\":\"localtestclientid\",\"AuthParameters\":{\"USERNAME\":\"seed@example.com\",\"PASSWORD\":\"SeedPassword123!\"}}')",
+      "Bash(curl -s -X POST http://127.0.0.1:9229/ -H \"Host: host.docker.internal:9229\" -H \"X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth\" -H \"Content-Type: application/x-amz-json-1.1\" -d '{\"AuthFlow\":\"USER_PASSWORD_AUTH\",\"ClientId\":\"f1d41x70ky2kfgqep3brp6rjl\",\"AuthParameters\":{\"USERNAME\":\"seed@example.com\",\"PASSWORD\":\"SeedPassword123!\"}}')",
+      "Bash(node -e ' *)",
+      "Bash(docker run *)",
+      "Bash(node test/setup/seed-integration.js)",
+      "Bash(\"C:/Program Files/Amazon/AWSSAMCLI/bin/sam.cmd\" --version)",
+      "Bash(\"C:/Program Files/Amazon/AWSSAMCLI/bin/sam.cmd\" local invoke loginFunction --template infra/template.yaml --env-vars infra/env.local.json --skip-pull-image --event /tmp/login-event.json)",
+      "Bash(\"C:/Program Files/Amazon/AWSSAMCLI/bin/sam.cmd\" local invoke loginFunction --template infra/template.yaml --env-vars infra/env.local.json --skip-pull-image --event /tmp/login-bad.json)"
+    ]
+  }
+}

@@ -99,7 +99,48 @@ Resources:
       DeletionProtection: false
       BackupRetentionPeriod: 1
 
-  # ---- Lambda ----
+  # ---- Cognito ----
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub enterprise-app-${Environment}-users
+      AutoVerifiedAttributes: [email]
+      UsernameAttributes: [email]
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub enterprise-app-${Environment}-app
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # ---- API with default Cognito authorizer ----
+
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub enterprise-app-${Environment}-api
+      StageName: !Ref Environment
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+            Identity:
+              Header: Authorization
+
+  # ---- Protected Lambda (default authorizer applies) ----
 
   healthFunction:
     Type: AWS::Serverless::Function
@@ -129,15 +170,171 @@ Resources:
         Api:
           Type: Api
           Properties:
+            RestApiId: !Ref Api
             Path: /v1/health
             Method: GET
       Policies:
         - VPCAccessPolicy: {}
 
+  usersMeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/handlers/get-users-me.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Description: Returns the authenticated user's profile.
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/users/me
+            Method: GET
+
+  # ---- Unauthenticated auth endpoints (explicit opt-out) ----
+
+  signupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/handlers/post-auth-signup.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Description: Sign up a new user via Cognito.
+      Environment:
+        Variables:
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_ENDPOINT: ""
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:SignUp
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/auth/signup
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  confirmFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/handlers/post-auth-confirm.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Description: Confirm a user's email with a Cognito code.
+      Environment:
+        Variables:
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_ENDPOINT: ""
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ConfirmSignUp
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/auth/confirm
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  loginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/handlers/post-auth-login.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Description: Authenticate a user and return tokens.
+      Environment:
+        Variables:
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_ENDPOINT: ""
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:InitiateAuth
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/auth/login
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  refreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../
+      Handler: dist/handlers/post-auth-refresh.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Description: Exchange a refresh token for a new access token.
+      Environment:
+        Variables:
+          COGNITO_CLIENT_ID: !Ref UserPoolClient
+          COGNITO_USER_POOL_ID: !Ref UserPool
+          COGNITO_ENDPOINT: ""
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:InitiateAuth
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/auth/refresh
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
 Outputs:
   WebEndpoint:
-    Description: "API Gateway endpoint URL for Prod stage"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/"
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.${AWS::URLSuffix}/${Environment}/"
+  UserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref UserPoolClient
   DBEndpoint:
     Description: "RDS PostgreSQL endpoint"
     Value: !GetAtt PostgresInstance.Endpoint.Address
