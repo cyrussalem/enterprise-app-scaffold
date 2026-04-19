@@ -18,7 +18,7 @@
     "integration:down": "docker compose -f docker-compose.test.yml down -v",
     "integration:seed": "node test/setup/seed-integration.js",
     "sam:build": "sam build --template-file infra/template.yaml",
-    "sam:local:start": "sam local start-api --template infra/template.yaml --port 3000 --env-vars infra/env.local.json --skip-pull-image --warm-containers LAZY",
+    "sam:local:start": "sam local start-api --template infra/template.yaml --port 3000 --env-vars infra/env.local.json",
     "pretest:integration:local": "npm run integration:up && npm run build && npm run integration:seed",
     "posttest:integration:local": "npm run integration:down",
     "test:integration:local": "cross-env WAIT_ON_TIMEOUT=600000 start-server-and-test sam:local:start tcp:127.0.0.1:3000 test:integration",

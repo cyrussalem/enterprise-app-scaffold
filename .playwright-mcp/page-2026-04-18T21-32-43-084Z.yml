@@ -1,0 +1,18 @@
+- generic [ref=e21]:
+  - banner [ref=e22]:
+    - generic [ref=e23]:
+      - heading "Enterprise App" [level=6] [ref=e24]
+      - paragraph [ref=e25]: seed@example.com
+      - button "Log out" [ref=e26] [cursor=pointer]
+  - generic [ref=e27]:
+    - heading "Welcome, seed@example.com" [level=4] [ref=e28]
+    - paragraph [ref=e29]:
+      - text: You are signed in. This page made an authenticated call to
+      - code [ref=e30]: GET /v1/health
+      - text: to prove the token works end-to-end.
+    - generic [ref=e32]:
+      - heading "Health" [level=6] [ref=e33]
+      - generic [ref=e34]:
+        - progressbar [ref=e35]:
+          - img [ref=e36]
+        - paragraph [ref=e38]: Loading...

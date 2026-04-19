@@ -1,0 +1,24 @@
+- generic [ref=e5]:
+  - heading "Sign in" [level=5] [ref=e6]
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e17]:
+        - text: Email
+        - generic [ref=e18]: "*"
+      - generic [ref=e9]:
+        - textbox "Email" [ref=e10]: seed@example.com
+        - group:
+          - generic: Email *
+    - generic [ref=e11]:
+      - generic [ref=e19]:
+        - text: Password
+        - generic [ref=e20]: "*"
+      - generic [ref=e12]:
+        - textbox "Password" [ref=e13]: SeedPassword123!
+        - group:
+          - generic: Password *
+    - button "Signing in..." [disabled]
+  - paragraph [ref=e15]:
+    - text: No account?
+    - link "Register" [ref=e16] [cursor=pointer]:
+      - /url: /register
