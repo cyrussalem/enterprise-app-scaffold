@@ -1,0 +1,25 @@
+- generic [ref=e5]:
+  - heading "Create account" [level=5] [ref=e6]
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e18]:
+        - text: Email
+        - generic [ref=e19]: "*"
+      - generic [ref=e9]:
+        - textbox "Email" [ref=e10]: smoketest@example.com
+        - group:
+          - generic: Email *
+    - generic [ref=e11]:
+      - generic [ref=e20]:
+        - text: Password
+        - generic [ref=e21]: "*"
+      - generic [ref=e12]:
+        - textbox "Password" [ref=e13]: SmokeTestPwd123!
+        - group:
+          - generic: Password *
+      - paragraph [ref=e14]: At least 12 characters, upper + lower + number
+    - button "Creating..." [disabled]
+  - paragraph [ref=e16]:
+    - text: Already have an account?
+    - link "Sign in" [ref=e17] [cursor=pointer]:
+      - /url: /login

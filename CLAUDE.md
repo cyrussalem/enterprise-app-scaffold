@@ -1,19 +1,21 @@
 # CLAUDE.md
 
-Last updated: 2026-04-06
+Last updated: 2026-04-19
 
 ## Project Summary
 
 Enterprise App Scaffold is a TypeScript REST API scaffold targeting AWS API Gateway + Lambda.
-Current implemented endpoint is GET /v1/health.
+Implemented endpoints: GET /v1/health, GET /v1/users/me, POST /v1/auth/{signup,confirm,login,refresh}.
 
 ## Current Implementation Facts
 
-- Lambda handler: src/handlers/get-health.ts
-- Infrastructure source of truth: infra/template.yaml
+- Lambda entrypoint: src/handlers/api.ts (single consolidated Lambda backs every route)
+- Internal router: src/handlers/router.ts dispatches by (httpMethod, event.resource) to child handlers in src/handlers/{get-*,post-*}.ts
+- Infrastructure source of truth: infra/template.yaml (single `apiFunction` with six `Events.Api` entries)
 - API route wiring is currently SAM Events.Api (not OpenAPI-imported API Gateway definition)
 - OpenAPI file exists at openapi/openapi.yaml but is not wired into SAM deployment yet
 - Tests: Jest unit and local integration tests (SAM local start-api + integration suite)
+- Consolidated-Lambda design doc: docs/backend/consolidated-lambda-design.md
 
 ## Commands
 

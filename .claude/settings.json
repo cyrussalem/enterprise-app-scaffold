@@ -52,7 +52,10 @@
       "Bash(xargs -r -I{} taskkill //PID {} //F)",
       "mcp__playwright__browser_evaluate",
       "Bash(timeout 20 curl -s -o /dev/null -w \"sam_login=%{http_code}\\\\n\" -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"seed@example.com\",\"password\":\"SeedPassword123!\"}' http://127.0.0.1:3000/v1/auth/login)",
-      "Bash(taskkill //PID 29192 //F)"
+      "Bash(taskkill //PID 29192 //F)",
+      "Bash(tee /tmp/integration.log)",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_close"
     ]
   }
 }

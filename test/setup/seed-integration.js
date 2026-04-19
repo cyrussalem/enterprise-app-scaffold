@@ -114,30 +114,12 @@ async function seedCognito() {
 function writeEnvLocal({ userPoolId, clientId }) {
   const endpointFromContainer = "http://host.docker.internal:9229";
   const envLocal = {
-    healthFunction: {
+    apiFunction: {
       DB_HOST: "host.docker.internal",
       DB_PORT: "5432",
       DB_NAME: "enterprise_app",
       DB_USERNAME: "postgres",
       DB_PASSWORD: "postgres",
-    },
-    usersMeFunction: {},
-    signupFunction: {
-      COGNITO_CLIENT_ID: clientId,
-      COGNITO_USER_POOL_ID: userPoolId,
-      COGNITO_ENDPOINT: endpointFromContainer,
-    },
-    confirmFunction: {
-      COGNITO_CLIENT_ID: clientId,
-      COGNITO_USER_POOL_ID: userPoolId,
-      COGNITO_ENDPOINT: endpointFromContainer,
-    },
-    loginFunction: {
-      COGNITO_CLIENT_ID: clientId,
-      COGNITO_USER_POOL_ID: userPoolId,
-      COGNITO_ENDPOINT: endpointFromContainer,
-    },
-    refreshFunction: {
       COGNITO_CLIENT_ID: clientId,
       COGNITO_USER_POOL_ID: userPoolId,
       COGNITO_ENDPOINT: endpointFromContainer,

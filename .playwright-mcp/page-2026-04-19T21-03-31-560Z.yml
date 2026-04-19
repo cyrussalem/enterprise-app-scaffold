@@ -1,0 +1,19 @@
+- generic [ref=e5]:
+  - heading "Confirm email" [level=5] [ref=e22]
+  - generic [ref=e23]:
+    - alert [ref=e24]:
+      - img [ref=e26]
+      - generic [ref=e28]: We sent a 6-digit code to smoketest@example.com. Enter it below to confirm.
+    - generic [ref=e29]:
+      - generic:
+        - text: Confirmation code
+        - generic: "*"
+      - generic [ref=e30]:
+        - textbox "Confirmation code" [ref=e31]
+        - group:
+          - generic: Confirmation code *
+    - button "Confirm" [ref=e32] [cursor=pointer]
+  - paragraph [ref=e16]:
+    - text: Already have an account?
+    - link "Sign in" [ref=e17] [cursor=pointer]:
+      - /url: /login

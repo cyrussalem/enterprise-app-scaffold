@@ -1,0 +1,25 @@
+- generic [ref=e5]:
+  - heading "Create account" [level=5] [ref=e6]
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic:
+        - text: Email
+        - generic: "*"
+      - generic [ref=e9]:
+        - textbox "Email" [ref=e10]
+        - group:
+          - generic: Email *
+    - generic [ref=e11]:
+      - generic:
+        - text: Password
+        - generic: "*"
+      - generic [ref=e12]:
+        - textbox "Password" [ref=e13]
+        - group:
+          - generic: Password *
+      - paragraph [ref=e14]: At least 12 characters, upper + lower + number
+    - button "Create account" [ref=e15] [cursor=pointer]
+  - paragraph [ref=e16]:
+    - text: Already have an account?
+    - link "Sign in" [ref=e17] [cursor=pointer]:
+      - /url: /login

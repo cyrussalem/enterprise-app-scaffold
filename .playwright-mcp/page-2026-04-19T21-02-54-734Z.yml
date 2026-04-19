@@ -1,0 +1,24 @@
+- generic [ref=e47]:
+  - heading "Sign in" [level=5] [ref=e48]
+  - generic [ref=e49]:
+    - generic [ref=e50]:
+      - generic:
+        - text: Email
+        - generic: "*"
+      - generic [ref=e51]:
+        - textbox "Email" [ref=e52]
+        - group:
+          - generic: Email *
+    - generic [ref=e53]:
+      - generic:
+        - text: Password
+        - generic: "*"
+      - generic [ref=e54]:
+        - textbox "Password" [ref=e55]
+        - group:
+          - generic: Password *
+    - button "Sign in" [ref=e56] [cursor=pointer]
+  - paragraph [ref=e57]:
+    - text: No account?
+    - link "Register" [ref=e58] [cursor=pointer]:
+      - /url: /register

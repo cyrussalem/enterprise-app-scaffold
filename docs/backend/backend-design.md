@@ -1,5 +1,7 @@
 # Backend Design: TypeScript REST API on AWS (Test Environment First)
 
+> **Implementation note (2026-04-19):** the current deployment consolidates every route behind a single Lambda (`src/handlers/api.ts`) with an internal router. The "one Lambda per endpoint" framing earlier in this document describes the original plan; see [consolidated-lambda-design.md](consolidated-lambda-design.md) for the current model.
+
 ## 1. Scope and Goal
 
 This document defines the first deployable backend slice for this repository:
