@@ -17,6 +17,32 @@
   20260502000002-create-user-profiles.cjs
 - All 26 unit tests pass; TypeScript build clean
 
-### Next: Task 2 — Device Repository (deep module)
-A single service layer exposing typed methods:
-list, get, create, update, delete, ingestTelemetry, queryTelemetry, getFleetSummary
+### Task 2: Device Repository — DONE
+- Created src/devices/device.repository.ts with all 8 typed methods:
+  listDevices, getDevice, createDevice, updateDevice, deleteDevice,
+  ingestTelemetry, queryTelemetry, getFleetSummary
+- listDevices/getDevice/updateDevice/deleteDevice all filter by user_id (ownership enforcement)
+- ingestTelemetry bulk-inserts readings and side-effects last_seen_at + status → online
+- getFleetSummary runs two raw aggregation queries (by status, by device_type) and computes healthScore
+- Added test/unit/device.repository.test.ts: 14 tests against real Postgres via docker-postgres helper
+- All 40 unit tests pass; TypeScript build clean
+
+### Task 3: Device CRUD HTTP endpoints — DONE
+- Updated src/handlers/router.ts: added path-parameter matching so local dev server
+  routes /v1/devices/abc → GET /v1/devices/{id} handler with pathParameters.id injected
+- Created 7 new handlers:
+  get-devices.ts (GET /v1/devices, with ?status and ?device_type filters)
+  post-devices.ts (POST /v1/devices, sets user_id from auth token)
+  get-device.ts (GET /v1/devices/{id})
+  patch-device.ts (PATCH /v1/devices/{id})
+  delete-device.ts (DELETE /v1/devices/{id})
+  post-device-telemetry.ts (POST /v1/devices/{id}/telemetry, batch readings)
+  get-dashboard-summary.ts (GET /v1/dashboard/summary)
+- Updated src/handlers/api.ts to register all 7 new routes
+- Updated infra/template.yaml with 7 new API Gateway event entries
+- Added test/integration/devices.api.test.ts: 12 end-to-end tests
+- All 40 unit tests pass; all 16 integration tests pass; TypeScript build clean
+
+### Next: Task 4 — Seed script
+50 simulated devices across 5 types, 5 locations, mixed statuses (70% online / 15% offline / 15% warning)
+7 days of telemetry readings per device, assigned to the demo user

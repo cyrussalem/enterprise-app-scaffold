@@ -225,6 +225,48 @@ Resources:
             Method: POST
             Auth:
               Authorizer: NONE
+        ListDevicesApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices
+            Method: GET
+        CreateDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices
+            Method: POST
+        GetDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices/{id}
+            Method: GET
+        UpdateDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices/{id}
+            Method: PATCH
+        DeleteDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices/{id}
+            Method: DELETE
+        IngestTelemetryApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices/{id}/telemetry
+            Method: POST
+        DashboardSummaryApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/dashboard/summary
+            Method: GET
 
 Outputs:
   WebEndpoint:
