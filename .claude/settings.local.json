@@ -12,7 +12,14 @@
       "Read(//c/Program Files/Amazon/AWSSAMCLI/bin/**)",
       "Bash(cmd.exe /c \"where sam\")",
       "Bash(export PATH=\"$PATH:/c/Program Files/Amazon/AWSSAMCLI/bin\")",
-      "Bash(sam --version)"
+      "Bash(sam --version)",
+      "Bash(cd:*)",
+      "Bash(sleep 90 && curl -s --max-time 5 http://localhost:3000/v1/health 2>&1)",
+      "Bash(sleep 60 && curl -s --max-time 10 http://localhost:3000/v1/health 2>&1)",
+      "Bash(powershell.exe:*)",
+      "Bash(sleep 120 && curl -s --max-time 10 http://localhost:3000/v1/health 2>&1)",
+      "Bash(curl:*)",
+      "Bash(head:*)"
     ]
   }
 }

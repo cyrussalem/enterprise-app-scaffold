@@ -1,0 +1,1 @@
+claude --permission-mode acceptEdits "@docs\prd\iot-platform-prd.md @progress.txt 1. Read the PRD and progress file. 2. Find the next incomplete task and implement it. 3. Follow testing automated and manual instructions in CLAUDE.md to ensure all tests pass. 4. Commit your changes. 5. Update progress.txt with what you did. ONLY DO ONE TASK AT A TIME."

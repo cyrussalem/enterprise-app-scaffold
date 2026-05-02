@@ -1,0 +1,22 @@
+## IoT Platform PRD — Implementation Progress
+
+### Task 1: Device Data Model — DONE (commit 9e356d4)
+- Extended Device Sequelize model with 22 new fields:
+  serial_number, manufacturer, model, device_type (enum), tags (array),
+  last_seen_at, ip_address, signal_strength, latitude, longitude,
+  location_label, timezone, firmware_version, hardware_revision,
+  last_ota_update_at, battery_level, uptime_seconds, error_count,
+  device_temperature, polling_interval_seconds, alert_threshold_config (jsonb), user_id
+- Created TelemetryReading model (device_id, recorded_at, metric, value, unit)
+  with composite index on (device_id, recorded_at)
+- Created UserProfile model (user_id, whatsapp_number) for WhatsApp bot resolver
+- Updated models/index.ts to initialise all three models
+- Wrote 3 additive migrations for production:
+  20260502000000-extend-devices-table.cjs
+  20260502000001-create-telemetry-readings.cjs
+  20260502000002-create-user-profiles.cjs
+- All 26 unit tests pass; TypeScript build clean
+
+### Next: Task 2 — Device Repository (deep module)
+A single service layer exposing typed methods:
+list, get, create, update, delete, ingestTelemetry, queryTelemetry, getFleetSummary

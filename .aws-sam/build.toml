@@ -5,8 +5,8 @@ codeuri = "C:\\Users\\Cyrus\\Software_Projects\\GitHub\\enterprise-app-scaffold"
 runtime = "nodejs22.x"
 architecture = "x86_64"
 handler = "dist/handlers/get-health.handler"
-manifest_hash = "a42d3a9b080f4707144fe9f6577c48cf"
+manifest_hash = "350f019e59037426497135ad9b937f39"
 packagetype = "Zip"
-functions = ["healthFunction", "usersMeFunction", "signupFunction", "confirmFunction", "loginFunction", "refreshFunction"]
+functions = ["apiFunction"]
 
 [layer_build_definitions]
