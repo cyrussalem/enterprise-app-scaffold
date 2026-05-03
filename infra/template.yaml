@@ -261,6 +261,12 @@ Resources:
             RestApiId: !Ref Api
             Path: /v1/devices/{id}/telemetry
             Method: POST
+        QueryTelemetryApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/devices/{id}/telemetry
+            Method: GET
         DashboardSummaryApi:
           Type: Api
           Properties:

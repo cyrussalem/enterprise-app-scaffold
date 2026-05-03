@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { HomePage } from "./pages/HomePage";
 import { FleetOverviewPage } from "./pages/FleetOverviewPage";
+import { DeviceDetailPage } from "./pages/DeviceDetailPage";
 
 function App() {
   return (
@@ -31,6 +32,14 @@ function App() {
               element={
                 <RequireAuth>
                   <FleetOverviewPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/devices/:id"
+              element={
+                <RequireAuth>
+                  <DeviceDetailPage />
                 </RequireAuth>
               }
             />

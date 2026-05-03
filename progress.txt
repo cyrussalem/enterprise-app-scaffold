@@ -91,4 +91,26 @@
 - Playwright verified: 50 pins visible at 5 world locations, correct colors,
   pin click navigates to /devices/{id}
 
-### Next: Task 7 — Per-device detail page (issues 15–17)
+### Task 7: Per-device detail page (issues 15–17) — DONE
+- Created src/handlers/get-device-telemetry.ts (GET /v1/devices/{id}/telemetry)
+  - Query params: metric, from, to, limit, offset; defaults to last 24h if from/to omitted
+  - Ownership-enforced via userId; returns 404 on unknown device
+- Registered route in src/handlers/api.ts and added QueryTelemetryApi SAM event in infra/template.yaml
+- Extended web/src/api/devices.ts: FullDevice type (all 25 fields), TelemetryReading type,
+  getDevice(), queryTelemetry() with QueryTelemetryOptions
+- Created web/src/pages/DeviceDetailPage.tsx at /devices/:id:
+  - InfoCard: all identity/location/firmware fields + status chip + relative last_seen_at;
+    device polled every 30s for live status refresh
+  - HealthGauges: 3 ApexCharts radialBar gauges — battery (%), temperature (°C), uptime (h);
+    color-coded green/amber/red by value
+  - TelemetryChart: discovers available metrics from last-7d query; metric dropdown +
+    1h/24h/7d toggle buttons; re-fetches on change; Skeleton while loading; empty-state alert
+  - ReadingsTable: paginated (25/page), 30d window, all metrics newest-first; prev/next controls
+  - AlertTimeline: empty-state card (alerts engine is out of scope for this phase)
+  - HTTP 404 renders "Device not found." warning
+- Updated web/src/App.tsx: added /devices/:id authenticated route
+- All 16 integration tests pass; TypeScript + Vite build clean
+- Playwright verified: info card, gauges, chart, table, alert section all render correctly;
+  404 case shows warning not blank page
+
+### Next: Task 8 — Fleet Overview alerts feed (issue 14)
