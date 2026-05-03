@@ -273,6 +273,14 @@ Resources:
             RestApiId: !Ref Api
             Path: /v1/dashboard/summary
             Method: GET
+        WhatsAppWebhookApi:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/whatsapp/webhook
+            Method: POST
+            Auth:
+              Authorizer: NONE
 
 Outputs:
   WebEndpoint:

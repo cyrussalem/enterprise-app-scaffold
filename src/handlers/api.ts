@@ -13,6 +13,7 @@ import { handler as deleteDevice } from "./delete-device";
 import { handler as postDeviceTelemetry } from "./post-device-telemetry";
 import { handler as getDeviceTelemetry } from "./get-device-telemetry";
 import { handler as getDashboardSummary } from "./get-dashboard-summary";
+import { handler as postWhatsappWebhook } from "./post-whatsapp-webhook";
 
 const routes: RouteTable = {
   "GET /v1/health": getHealth,
@@ -29,6 +30,7 @@ const routes: RouteTable = {
   "POST /v1/devices/{id}/telemetry": postDeviceTelemetry,
   "GET /v1/devices/{id}/telemetry": getDeviceTelemetry,
   "GET /v1/dashboard/summary": getDashboardSummary,
+  "POST /v1/whatsapp/webhook": postWhatsappWebhook,
 };
 
 export const handler = createRouter(routes);
