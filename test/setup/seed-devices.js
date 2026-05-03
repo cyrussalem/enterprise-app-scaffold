@@ -116,8 +116,11 @@ async function getDemoUserSub() {
     AuthParameters: { USERNAME: 'seed@example.com', PASSWORD: 'SeedPassword123!' },
   }));
 
-  const idToken = result.AuthenticationResult.IdToken;
-  const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64url').toString());
+  // Use the AccessToken sub — the local dev server decodes the Bearer (AccessToken)
+  // to identify the user, so seeded devices must match that sub, not the IdToken sub.
+  // In real Cognito both tokens share the same sub; in cognito-local they can differ.
+  const accessToken = result.AuthenticationResult.AccessToken;
+  const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64url').toString());
   return payload.sub;
 }
 

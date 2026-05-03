@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { AppBar, Toolbar, Typography, Button, Box, Container } from "@mui/material";
 
 interface AppShellProps {
@@ -12,9 +13,16 @@ export function AppShell({ userEmail, onLogout, children }: AppShellProps) {
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar position="static" color="primary">
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Enterprise App
+          <Typography variant="h6" sx={{ mr: 3 }}>
+            IoT Platform
           </Typography>
+          <Button color="inherit" component={RouterLink} to="/">
+            Home
+          </Button>
+          <Button color="inherit" component={RouterLink} to="/fleet">
+            Fleet
+          </Button>
+          <Box sx={{ flexGrow: 1 }} />
           {userEmail && (
             <Typography variant="body2" sx={{ mr: 2 }}>
               {userEmail}
@@ -25,7 +33,7 @@ export function AppShell({ userEmail, onLogout, children }: AppShellProps) {
           </Button>
         </Toolbar>
       </AppBar>
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
         {children}
       </Container>
     </Box>

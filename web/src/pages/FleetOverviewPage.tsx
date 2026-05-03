@@ -1,0 +1,225 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+import ReactApexChart from "react-apexcharts";
+import type { ApexOptions } from "apexcharts";
+import { AppShell } from "../components/AppShell";
+import { useAuth } from "../auth/AuthContext";
+import { getDashboardSummary } from "../api/devices";
+import type { FleetSummary } from "../api/devices";
+
+function KpiCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <Card sx={{ textAlign: "center" }}>
+      <CardContent>
+        <Typography variant="h3" sx={{ color, fontWeight: 700 }}>
+          {value}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {label}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusDonut({ online, offline, warning }: { online: number; offline: number; warning: number }) {
+  const options: ApexOptions = {
+    chart: { type: "donut" },
+    labels: ["Online", "Offline", "Warning"],
+    colors: ["#4caf50", "#f44336", "#ff9800"],
+    legend: { position: "bottom" },
+    dataLabels: { enabled: true },
+  };
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Device Status
+        </Typography>
+        <ReactApexChart
+          options={options}
+          series={[online, offline, warning]}
+          type="donut"
+          height={280}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function TypeBarChart({ byType }: { byType: Partial<Record<string, number>> }) {
+  const entries = Object.entries(byType).filter(([, v]) => v !== undefined) as [
+    string,
+    number
+  ][];
+  const categories = entries.map(([k]) => k);
+  const data = entries.map(([, v]) => v);
+
+  const options: ApexOptions = {
+    chart: { type: "bar", toolbar: { show: false } },
+    xaxis: { categories },
+    colors: ["#1976d2"],
+    dataLabels: { enabled: false },
+    plotOptions: { bar: { borderRadius: 4 } },
+  };
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Device Types
+        </Typography>
+        <ReactApexChart
+          options={options}
+          series={[{ name: "Count", data }]}
+          type="bar"
+          height={280}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function HealthGauge({ score }: { score: number }) {
+  const color = score >= 80 ? "#4caf50" : score >= 50 ? "#ff9800" : "#f44336";
+  const options: ApexOptions = {
+    chart: { type: "radialBar" },
+    plotOptions: {
+      radialBar: {
+        hollow: { size: "60%" },
+        dataLabels: {
+          name: { show: true, offsetY: 20 },
+          value: {
+            show: true,
+            fontSize: "28px",
+            fontWeight: 700,
+            offsetY: -20,
+            formatter: (val: number) => `${val}%`,
+          },
+        },
+      },
+    },
+    colors: [color],
+    labels: ["Health Score"],
+  };
+  return (
+    <Card>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Fleet Health
+        </Typography>
+        <ReactApexChart
+          options={options}
+          series={[score]}
+          type="radialBar"
+          height={280}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+export function FleetOverviewPage() {
+  const { session, logout } = useAuth();
+  const navigate = useNavigate();
+  const [summary, setSummary] = useState<FleetSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    setLoading(true);
+    getDashboardSummary(session.accessToken)
+      .then((data) => {
+        if (!cancelled) setSummary(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : "Failed to load summary");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  function handleLogout() {
+    logout();
+    navigate("/login", { replace: true });
+  }
+
+  return (
+    <AppShell userEmail={session?.user.email} onLogout={handleLogout}>
+      <Typography variant="h4" gutterBottom>
+        Fleet Overview
+      </Typography>
+
+      {loading && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 4 }}>
+          <CircularProgress />
+          <Typography>Loading fleet data…</Typography>
+        </Box>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!loading && !error && summary && (
+        <>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <KpiCard label="Total" value={summary.total} color="text.primary" />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <KpiCard label="Online" value={summary.online} color="#4caf50" />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <KpiCard label="Offline" value={summary.offline} color="#f44336" />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <KpiCard label="Warning" value={summary.warning} color="#ff9800" />
+            </Grid>
+          </Grid>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <StatusDonut
+                online={summary.online}
+                offline={summary.offline}
+                warning={summary.warning}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TypeBarChart byType={summary.byType} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <HealthGauge score={summary.healthScore} />
+            </Grid>
+          </Grid>
+        </>
+      )}
+    </AppShell>
+  );
+}

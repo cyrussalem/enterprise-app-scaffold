@@ -14,7 +14,9 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.0.0",
     "@rolldown/binding-win32-x64-msvc": "^1.0.0-rc.15",
+    "apexcharts": "^5.10.6",
     "react": "^19.2.4",
+    "react-apexcharts": "^2.1.0",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1"
   },

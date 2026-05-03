@@ -7,6 +7,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { HomePage } from "./pages/HomePage";
+import { FleetOverviewPage } from "./pages/FleetOverviewPage";
 
 function App() {
   return (
@@ -22,6 +23,14 @@ function App() {
               element={
                 <RequireAuth>
                   <HomePage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/fleet"
+              element={
+                <RequireAuth>
+                  <FleetOverviewPage />
                 </RequireAuth>
               }
             />
