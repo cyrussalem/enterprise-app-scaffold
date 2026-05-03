@@ -113,4 +113,18 @@
 - Playwright verified: info card, gauges, chart, table, alert section all render correctly;
   404 case shows warning not blank page
 
-### Next: Task 8 — Fleet Overview alerts feed (issue 14)
+### Task 8: Fleet Overview — alerts feed (issue 14) — DONE
+- Extended Device interface in web/src/api/devices.ts with last_seen_at and updatedAt
+- Added AlertsFeed component to web/src/pages/FleetOverviewPage.tsx:
+  - Derives alerts from already-loaded devices state (no extra API call)
+  - Filters to status=offline and status=warning, sorts by last_seen_at descending,
+    shows up to 20 entries
+  - Each row: status chip (red=offline / amber=warning), device name, location label,
+    relative timestamp; click navigates to /devices/{id}
+  - Empty state shows "No active alerts — all devices are online"
+- Added formatRelative helper for relative timestamps
+- Renders below the map on the fleet overview page
+- All 16 integration tests pass; TypeScript + Vite build clean
+- Playwright verified: 15 alerts rendered (7 warning + 8 offline), click navigates to device detail
+
+### Next: Task 9 — WhatsApp AI assistant (issues 9–10)

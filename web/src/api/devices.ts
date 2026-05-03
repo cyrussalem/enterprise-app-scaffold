@@ -15,6 +15,8 @@ export interface Device {
   latitude: number | null;
   longitude: number | null;
   location_label: string | null;
+  last_seen_at: string | null;
+  updatedAt: string;
 }
 
 export interface FullDevice {

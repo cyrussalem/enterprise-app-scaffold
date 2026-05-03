@@ -8,6 +8,8 @@ import {
   Grid,
   CircularProgress,
   Alert,
+  Chip,
+  Divider,
 } from "@mui/material";
 import ReactApexChart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
@@ -136,6 +138,77 @@ function HealthGauge({ score }: { score: number }) {
   );
 }
 
+function formatRelative(dateStr: string | null): string {
+  if (!dateStr) return "Unknown";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function AlertsFeed({ devices, onNavigate }: { devices: Device[]; onNavigate: (id: string) => void }) {
+  const alerts = devices
+    .filter((d) => d.status === "offline" || d.status === "warning")
+    .sort((a, b) => {
+      const ta = a.last_seen_at ?? a.updatedAt;
+      const tb = b.last_seen_at ?? b.updatedAt;
+      return new Date(tb).getTime() - new Date(ta).getTime();
+    })
+    .slice(0, 20);
+
+  return (
+    <Card sx={{ mt: 3 }}>
+      <CardContent>
+        <Typography variant="h6" gutterBottom>
+          Recent Alerts
+        </Typography>
+        {alerts.length === 0 ? (
+          <Alert severity="success">No active alerts — all devices are online.</Alert>
+        ) : (
+          alerts.map((d, i) => (
+            <Box key={d.id}>
+              {i > 0 && <Divider />}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  py: 1.5,
+                  px: 1,
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+                onClick={() => onNavigate(d.id)}
+              >
+                <Chip
+                  label={d.status}
+                  color={d.status === "offline" ? "error" : "warning"}
+                  size="small"
+                  sx={{ textTransform: "capitalize", minWidth: 72 }}
+                />
+                <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                  {d.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {d.location_label ?? "Unknown location"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 72, textAlign: "right" }}>
+                  {formatRelative(d.last_seen_at)}
+                </Typography>
+              </Box>
+            </Box>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FleetOverviewPage() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
@@ -235,6 +308,11 @@ export function FleetOverviewPage() {
               <DeviceMap devices={devices} />
             </CardContent>
           </Card>
+
+          <AlertsFeed
+            devices={devices}
+            onNavigate={(id) => navigate(`/devices/${id}`)}
+          />
         </>
       )}
     </AppShell>
