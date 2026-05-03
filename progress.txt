@@ -127,4 +127,27 @@
 - All 16 integration tests pass; TypeScript + Vite build clean
 - Playwright verified: 15 alerts rendered (7 warning + 8 offline), click navigates to device detail
 
-### Next: Task 9 — WhatsApp AI assistant (issues 9–10)
+### Task 9: WhatsApp AI assistant (issues 9–10) — DONE (commit e946cea)
+- Created src/services/claudeService.ts:
+  - generateReply(question, deviceContext, client?) — injectable Anthropic client for unit testing
+  - Uses claude-sonnet-4-6, max_tokens 300
+  - System prompt includes JSON-serialized deviceContext with cache_control: { type: "ephemeral" }
+    for prompt caching on repeated queries
+  - ClaudeServiceError thrown on API failure
+- Created src/services/twilioService.ts:
+  - validateTwilioSignature(signature, url, params) — wraps twilio.validateRequest()
+  - sendWhatsApp(to, body) — creates message via Twilio REST API with whatsapp: prefix
+  - TWILIO_AUTH_TOKEN / TWILIO_ACCOUNT_SID / TWILIO_FROM_NUMBER from env
+- Created src/handlers/post-whatsapp-webhook.ts:
+  - Parses application/x-www-form-urlencoded Twilio payload (supports base64-encoded body)
+  - Validates Twilio signature; returns 403 on invalid sig (skipped if TWILIO_SKIP_SIGNATURE_VALIDATION=true)
+  - Strips whatsapp: prefix from From field to get E.164 number
+  - Looks up UserProfile by whatsapp_number; if not found, sends "not registered" reply, returns 200
+  - For recognized users: fetches fleet summary + device list concurrently, calls generateReply,
+    sends reply via sendWhatsApp; error fallback sends "try again" message
+  - Always returns 200 (Twilio expects 200 ACK)
+- Wired into src/handlers/api.ts router and infra/template.yaml with Auth: NONE (no Cognito for webhook)
+- 13 new unit tests (claude.service: 6, whatsapp.webhook: 7)
+- All 53 unit tests pass; all 16 integration tests pass; TypeScript build clean
+
+### Next: Task 10 — (check PRD for remaining issues)
