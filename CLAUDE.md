@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last updated: 2026-05-02
+Last updated: 2026-05-03
 
 ## Project Summary
 
@@ -14,7 +14,7 @@ Implemented endpoints: GET /v1/health, GET /v1/users/me, POST /v1/auth/{signup,c
 - Infrastructure source of truth: infra/template.yaml (single `apiFunction` with six `Events.Api` entries)
 - API route wiring is currently SAM Events.Api (not OpenAPI-imported API Gateway definition)
 - OpenAPI file exists at openapi/openapi.yaml but is not wired into SAM deployment yet
-- Tests: Jest unit and local integration tests (SAM local start-api + integration suite)
+- Tests: Jest unit and local integration tests (local Express adapter + integration suite; SAM scripts kept for pre-deploy checks)
 - Consolidated-Lambda design doc: docs/backend/consolidated-lambda-design.md
 
 ## Commands
@@ -22,15 +22,15 @@ Implemented endpoints: GET /v1/health, GET /v1/users/me, POST /v1/auth/{signup,c
 - Install: npm ci
 - Build: npm run build
 - Unit tests: npm run test:unit
-- Before starting integration tests: aws login
-- Local integration tests:
-    - aws login
-    - npm run pretest:integration:local
+- Local integration tests (no AWS credentials required):
     - npm run test:integration:local
-    - npm run posttest:integration:local
-- Stop SAM lambda containers: npm run sam:local:stop
+      (pre/post hooks handle Docker services, build, seed, and teardown automatically)
+- Run integration tests against an already-running stack (faster iteration):
+    - npm run test:integration
+- Start local API server only: npm run local:start (requires prior build + Docker services up)
+- Stop SAM lambda containers (pre-deploy check only): npm run sam:local:stop
 - Package (requires ARTIFACT_BUCKET): npm run package:test
-- Deploy test stack: npm run deploy:test
+- Deploy test stack (requires aws login): npm run deploy:test
 
 ## Manual UI Testing with Playwright MCP
 
@@ -42,12 +42,12 @@ Before starting any manual UI or API verification session, the full local stack 
    ```
    This runs `integration:up` (starts Postgres + Cognito containers via Docker Compose and waits for them to be healthy), then builds the TypeScript source, then seeds the database with test fixtures.
 
-2. **Start the API (SAM local)**
+2. **Start the API (local Express server)**
    In a separate terminal (this process stays running):
    ```
    npm run dev:api
    ```
-   This starts `sam local start-api` on `http://localhost:3000`. Wait until you see `Running on http://127.0.0.1:3000` in its output before proceeding.
+   This starts `scripts/local-server.js` on `http://127.0.0.1:3000` — the Lambda handler runs in-process, no Docker container. Wait until you see `[local-server] Listening on http://127.0.0.1:3000` before proceeding.
 
 3. **Start the frontend dev server**
    In another separate terminal (this process stays running):
@@ -55,6 +55,10 @@ Before starting any manual UI or API verification session, the full local stack 
    npm run dev:web
    ```
    This starts the web app (Vite). Note the URL it prints (typically `http://localhost:5173`) — that is the address to use in browser-based tests.
+
+**Seed credentials:** the demo user is `seed@example.com` / `SeedPassword123!` (set in
+`test/setup/seed-integration.js`). Check that file before attempting a browser login — do not
+guess the password.
 
 Once all three are running, use the Playwright MCP tools to verify UI flows:
 
@@ -69,7 +73,24 @@ Once all three are running, use the Playwright MCP tools to verify UI flows:
 ```
 npm run dev:down
 ```
-This stops Docker Compose services and runs `sam:local:stop` to remove any lingering Lambda containers. Terminate the `dev:api` and `dev:web` terminal processes manually.
+This stops Docker Compose services. Terminate the `dev:api` and `dev:web` terminal processes manually (Ctrl+C).
+
+**Restarting servers:** `dev:api` and `dev:web` are separate long-running node processes. If you
+need to restart only the API (e.g. after re-seeding), kill it by name/PID rather than with a
+broad `Stop-Process -Name node` — that will also kill the Vite dev server and you will have to
+restart both.
+
+## Shell Usage on Windows
+
+This project runs on Windows. Use the correct tool for each shell:
+
+- **PowerShell tool** for PowerShell cmdlets (`Stop-Process`, `Start-Process`, `Invoke-WebRequest`,
+  `Start-Sleep`, `Get-Content`, etc.). These do not exist in bash and will fail immediately if
+  run via the Bash tool.
+- **Bash tool** for POSIX commands and npm scripts.
+- **Grep / Glob / Read tools** preferred over `grep`/`find`/`cat` in either shell.
+
+Never run PowerShell cmdlets inside the Bash tool — switch to the PowerShell tool instead.
 
 ## Documentation Guardrails
 

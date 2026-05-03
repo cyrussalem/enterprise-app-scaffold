@@ -143,17 +143,17 @@ Resources:
               - Arn
             Identity:
               Header: Authorization
-  healthFunction:
+  apiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: healthFunction
-      Handler: dist/handlers/get-health.handler
+      CodeUri: apiFunction
+      Handler: dist/handlers/api.handler
       Runtime: nodejs22.x
       Architectures:
       - x86_64
-      MemorySize: 128
+      MemorySize: 256
       Timeout: 100
-      Description: Health endpoint Lambda function.
+      Description: Consolidated API Lambda. Routes all /v1/* endpoints.
       VpcConfig:
         SecurityGroupIds:
         - Ref: LambdaSecurityGroup
@@ -175,68 +175,39 @@ Resources:
             Ref: DBUsername
           DB_PASSWORD:
             Ref: DBPassword
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            RestApiId:
-              Ref: Api
-            Path: /v1/health
-            Method: GET
-      Policies:
-      - VPCAccessPolicy: {}
-    Metadata:
-      SamResourceId: healthFunction
-  usersMeFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: usersMeFunction
-      Handler: dist/handlers/get-users-me.handler
-      Runtime: nodejs22.x
-      Architectures:
-      - x86_64
-      MemorySize: 128
-      Timeout: 10
-      Description: Returns the authenticated user's profile.
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            RestApiId:
-              Ref: Api
-            Path: /v1/users/me
-            Method: GET
-    Metadata:
-      SamResourceId: usersMeFunction
-  signupFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: signupFunction
-      Handler: dist/handlers/post-auth-signup.handler
-      Runtime: nodejs22.x
-      Architectures:
-      - x86_64
-      MemorySize: 128
-      Timeout: 10
-      Description: Sign up a new user via Cognito.
-      Environment:
-        Variables:
           COGNITO_CLIENT_ID:
             Ref: UserPoolClient
           COGNITO_USER_POOL_ID:
             Ref: UserPool
           COGNITO_ENDPOINT: ''
       Policies:
+      - VPCAccessPolicy: {}
       - Statement:
         - Effect: Allow
           Action:
           - cognito-idp:SignUp
+          - cognito-idp:ConfirmSignUp
+          - cognito-idp:InitiateAuth
           Resource:
             Fn::GetAtt:
             - UserPool
             - Arn
       Events:
-        Api:
+        HealthApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/health
+            Method: GET
+        UsersMeApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/users/me
+            Method: GET
+        SignupApi:
           Type: Api
           Properties:
             RestApiId:
@@ -245,37 +216,7 @@ Resources:
             Method: POST
             Auth:
               Authorizer: NONE
-    Metadata:
-      SamResourceId: signupFunction
-  confirmFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: confirmFunction
-      Handler: dist/handlers/post-auth-confirm.handler
-      Runtime: nodejs22.x
-      Architectures:
-      - x86_64
-      MemorySize: 128
-      Timeout: 10
-      Description: Confirm a user's email with a Cognito code.
-      Environment:
-        Variables:
-          COGNITO_CLIENT_ID:
-            Ref: UserPoolClient
-          COGNITO_USER_POOL_ID:
-            Ref: UserPool
-          COGNITO_ENDPOINT: ''
-      Policies:
-      - Statement:
-        - Effect: Allow
-          Action:
-          - cognito-idp:ConfirmSignUp
-          Resource:
-            Fn::GetAtt:
-            - UserPool
-            - Arn
-      Events:
-        Api:
+        ConfirmApi:
           Type: Api
           Properties:
             RestApiId:
@@ -284,37 +225,7 @@ Resources:
             Method: POST
             Auth:
               Authorizer: NONE
-    Metadata:
-      SamResourceId: confirmFunction
-  loginFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: loginFunction
-      Handler: dist/handlers/post-auth-login.handler
-      Runtime: nodejs22.x
-      Architectures:
-      - x86_64
-      MemorySize: 128
-      Timeout: 10
-      Description: Authenticate a user and return tokens.
-      Environment:
-        Variables:
-          COGNITO_CLIENT_ID:
-            Ref: UserPoolClient
-          COGNITO_USER_POOL_ID:
-            Ref: UserPool
-          COGNITO_ENDPOINT: ''
-      Policies:
-      - Statement:
-        - Effect: Allow
-          Action:
-          - cognito-idp:InitiateAuth
-          Resource:
-            Fn::GetAtt:
-            - UserPool
-            - Arn
-      Events:
-        Api:
+        LoginApi:
           Type: Api
           Properties:
             RestApiId:
@@ -323,37 +234,7 @@ Resources:
             Method: POST
             Auth:
               Authorizer: NONE
-    Metadata:
-      SamResourceId: loginFunction
-  refreshFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: refreshFunction
-      Handler: dist/handlers/post-auth-refresh.handler
-      Runtime: nodejs22.x
-      Architectures:
-      - x86_64
-      MemorySize: 128
-      Timeout: 10
-      Description: Exchange a refresh token for a new access token.
-      Environment:
-        Variables:
-          COGNITO_CLIENT_ID:
-            Ref: UserPoolClient
-          COGNITO_USER_POOL_ID:
-            Ref: UserPool
-          COGNITO_ENDPOINT: ''
-      Policies:
-      - Statement:
-        - Effect: Allow
-          Action:
-          - cognito-idp:InitiateAuth
-          Resource:
-            Fn::GetAtt:
-            - UserPool
-            - Arn
-      Events:
-        Api:
+        RefreshApi:
           Type: Api
           Properties:
             RestApiId:
@@ -363,7 +244,7 @@ Resources:
             Auth:
               Authorizer: NONE
     Metadata:
-      SamResourceId: refreshFunction
+      SamResourceId: apiFunction
 Outputs:
   WebEndpoint:
     Description: API Gateway endpoint URL
