@@ -74,8 +74,21 @@
   user_id must match that sub
 - All 16 integration tests pass; TypeScript build clean; Playwright verified at 50 devices
 
-### Next: Task 6 — Fleet Overview world map (issue 13)
-React Leaflet map on /fleet showing every device as a color-coded pin;
-click a pin → navigate to /devices/{id}
+### Task 6: Fleet Overview — world map (issue 13) — DONE
+- Added `import 'leaflet/dist/leaflet.css'` to web/src/main.tsx
+- Created web/src/components/DeviceMap.tsx:
+  - React Leaflet MapContainer with OpenStreetMap TileLayer (no API key)
+  - Renders one CircleMarker per device that has lat/lon coordinates
+  - Color-coded by status: green (#4caf50) = online, red (#f44336) = offline,
+    amber (#ff9800) = warning
+  - FitBounds child component calls map.fitBounds() on all pin coordinates on load
+  - eventHandlers.click calls useNavigate(`/devices/${device.id}`) on each pin
+  - Popup shows device name, location label, and status
+- Updated web/src/pages/FleetOverviewPage.tsx:
+  - Parallel fetch of getDashboardSummary + getDevices via Promise.all
+  - Added devices state; DeviceMap rendered in a Card below the three charts
+- All 16 integration tests pass; TypeScript + Vite build clean
+- Playwright verified: 50 pins visible at 5 world locations, correct colors,
+  pin click navigates to /devices/{id}
 
-### After that: Task 7 — Per-device detail page (issues 15–17)
+### Next: Task 7 — Per-device detail page (issues 15–17)

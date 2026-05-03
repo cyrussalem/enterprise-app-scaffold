@@ -12,9 +12,10 @@ import {
 import ReactApexChart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import { AppShell } from "../components/AppShell";
+import { DeviceMap } from "../components/DeviceMap";
 import { useAuth } from "../auth/AuthContext";
-import { getDashboardSummary } from "../api/devices";
-import type { FleetSummary } from "../api/devices";
+import { getDashboardSummary, getDevices } from "../api/devices";
+import type { FleetSummary, Device } from "../api/devices";
 
 function KpiCard({
   label,
@@ -139,6 +140,7 @@ export function FleetOverviewPage() {
   const { session, logout } = useAuth();
   const navigate = useNavigate();
   const [summary, setSummary] = useState<FleetSummary | null>(null);
+  const [devices, setDevices] = useState<Device[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -146,13 +148,19 @@ export function FleetOverviewPage() {
     if (!session) return;
     let cancelled = false;
     setLoading(true);
-    getDashboardSummary(session.accessToken)
-      .then((data) => {
-        if (!cancelled) setSummary(data);
+    Promise.all([
+      getDashboardSummary(session.accessToken),
+      getDevices(session.accessToken),
+    ])
+      .then(([summaryData, deviceData]) => {
+        if (!cancelled) {
+          setSummary(summaryData);
+          setDevices(deviceData);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setError(err instanceof Error ? err.message : "Failed to load summary");
+          setError(err instanceof Error ? err.message : "Failed to load fleet data");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -203,7 +211,7 @@ export function FleetOverviewPage() {
             </Grid>
           </Grid>
 
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
               <StatusDonut
                 online={summary.online}
@@ -218,6 +226,15 @@ export function FleetOverviewPage() {
               <HealthGauge score={summary.healthScore} />
             </Grid>
           </Grid>
+
+          <Card>
+            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+              <Typography variant="h6" gutterBottom>
+                Device Locations
+              </Typography>
+              <DeviceMap devices={devices} />
+            </CardContent>
+          </Card>
         </>
       )}
     </AppShell>
