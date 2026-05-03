@@ -58,7 +58,24 @@
 - Updated package.json: integration:seed now chains seed-integration.js && seed-devices.js
 - All 16 integration tests pass; TypeScript build clean
 
-### Next: Task 5 — Frontend dashboard
-Fleet overview page: KPI cards (total/online/offline/warning), status donut chart,
-device-type bar chart, health gauge, world map with device pins
-Per-device detail page: info card, gauges, telemetry time-series chart, readings table
+### Task 5: Fleet Overview — KPI cards + charts (issue 12) — DONE (commit e637aa1)
+- Installed apexcharts + react-apexcharts in web/
+- Created web/src/api/devices.ts: getDashboardSummary() and getDevices() typed wrappers
+- Created web/src/pages/FleetOverviewPage.tsx at /fleet route:
+  - KPI row: Total / Online / Offline / Warning MUI cards with colour-coded values
+  - Status donut chart (ApexCharts): proportions of online/offline/warning
+  - Device-type bar chart (ApexCharts): count per device type
+  - Fleet health radial gauge (ApexCharts): single health-score percentage dial
+  - Loading spinner and error alert states
+- Updated AppShell: renamed to "IoT Platform", added Home + Fleet nav links, widened container to lg
+- Updated App.tsx to register /fleet as an authenticated route
+- Fixed seed-devices.js to use AccessToken sub (not IdToken sub) — cognito-local assigns
+  different UUIDs per token type; the local server decodes Bearer (AccessToken), so the seeded
+  user_id must match that sub
+- All 16 integration tests pass; TypeScript build clean; Playwright verified at 50 devices
+
+### Next: Task 6 — Fleet Overview world map (issue 13)
+React Leaflet map on /fleet showing every device as a color-coded pin;
+click a pin → navigate to /devices/{id}
+
+### After that: Task 7 — Per-device detail page (issues 15–17)
