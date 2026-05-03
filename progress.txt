@@ -43,6 +43,22 @@
 - Added test/integration/devices.api.test.ts: 12 end-to-end tests
 - All 40 unit tests pass; all 16 integration tests pass; TypeScript build clean
 
-### Next: Task 4 — Seed script
-50 simulated devices across 5 types, 5 locations, mixed statuses (70% online / 15% offline / 15% warning)
-7 days of telemetry readings per device, assigned to the demo user
+### Task 4: Seed script — DONE
+- Created test/setup/seed-devices.js:
+  - Logs in to Cognito to resolve demo user sub
+  - Creates 50 devices: 10 per type (sensor/tracker/meter/actuator/gateway),
+    cycled across 5 locations (London, New York, Tokyo, Sydney, Dubai)
+  - Status distribution: 35 online / 8 offline / 7 warning (shuffled randomly)
+  - Rich device fields: serial number, manufacturer, model, firmware version,
+    lat/lon with jitter, IP, signal strength, battery level, uptime, tags,
+    alert threshold config, last_seen_at (recency varies by status)
+  - Generates 42 telemetry readings per metric per device (4-hour intervals, 7 days)
+    with correlated random-walk values: 6,300 readings total
+  - Bulk-inserts readings in batches of 1,000
+- Updated package.json: integration:seed now chains seed-integration.js && seed-devices.js
+- All 16 integration tests pass; TypeScript build clean
+
+### Next: Task 5 — Frontend dashboard
+Fleet overview page: KPI cards (total/online/offline/warning), status donut chart,
+device-type bar chart, health gauge, world map with device pins
+Per-device detail page: info card, gauges, telemetry time-series chart, readings table
