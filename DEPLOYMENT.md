@@ -219,186 +219,74 @@ $TOKEN_RESPONSE = curl.exe -s -X POST "$env:API_URL/v1/auth/login" `
   -H "Content-Type: application/json" `
   -d '{"email":"you@example.com","password":"TestPassword123!"}'
 
-$env:ACCESS_TOKEN = ($TOKEN_RESPONSE | ConvertFrom-Json).accessToken
+$env:ID_TOKEN = ($TOKEN_RESPONSE | ConvertFrom-Json).idToken
 ```
 
 ### Call an authenticated endpoint
 
 ```powershell
 curl.exe -s "$env:API_URL/v1/users/me" `
-  -H "Authorization: Bearer $env:ACCESS_TOKEN"
+  -H "Authorization: Bearer $env:ID_TOKEN"
 ```
 
 ---
 
-## Part 4 — Frontend on CloudFront (Overachiever)
+## Part 4 — Frontend on CloudFront
 
-This deploys the Vite/React web app to S3 and serves it via CloudFront, with API calls routed through CloudFront behaviors so the frontend uses relative `/v1/...` paths (no `VITE_API_URL` changes needed).
+The S3 bucket, CloudFront OAC, and CloudFront distribution are all defined in `infra/template.yaml` and provisioned automatically by `sam deploy`. No manual CLI setup is needed.
+
+The distribution has two behaviors:
+- `Default (*)` → S3 origin — serves the SPA, with 403/404 mapped to `index.html` for client-side routing
+- `/v1/*` → API Gateway origin — proxied with no caching, `Authorization` header forwarded
 
 ### Step 1: Build the frontend
 
 ```powershell
-cd web
-npm ci
-npm run build
-cd ..
+npm --prefix web ci
+npm --prefix web run build
 ```
 
 The build output lands in `web/dist/`.
 
-### Step 2: Create an S3 bucket for the assets
+### Step 2: Deploy (provisions all infra including CloudFront)
 
 ```powershell
-$ACCOUNT_ID   = aws sts get-caller-identity --query Account --output text
-$REGION       = aws configure get region
-$BUCKET_NAME  = "enterprise-app-test-web-$ACCOUNT_ID"
+sam build --template-file infra/template.yaml
 
-aws s3 mb "s3://$BUCKET_NAME" --region $REGION
-
-aws s3api put-public-access-block `
-  --bucket $BUCKET_NAME `
-  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+sam deploy `
+  --stack-name enterprise-app-test `
+  --capabilities CAPABILITY_IAM `
+  --parameter-overrides Environment=test DBUsername=postgres DBPassword=YOUR_STRONG_PASSWORD_HERE `
+  --resolve-s3 `
+  --confirm-changeset
 ```
 
-### Step 3: Sync the built assets to S3
+> **First deploy:** CloudFront takes ~5 minutes to provision. The `WebURL` output won't be reachable until the distribution status is `Deployed`.
+
+### Step 3: Upload the frontend bundle to S3
+
+Pull the bucket name and distribution ID from the stack outputs:
+
+```powershell
+$BUCKET_NAME      = aws cloudformation describe-stacks --stack-name enterprise-app-test --query "Stacks[0].Outputs[?OutputKey=='WebBucketName'].OutputValue" --output text
+$DISTRIBUTION_ID  = aws cloudformation describe-stacks --stack-name enterprise-app-test --query "Stacks[0].Outputs[?OutputKey=='WebDistributionId'].OutputValue" --output text
+$WEB_URL          = aws cloudformation describe-stacks --stack-name enterprise-app-test --query "Stacks[0].Outputs[?OutputKey=='WebURL'].OutputValue" --output text
+```
+
+Sync and invalidate:
 
 ```powershell
 aws s3 sync web/dist/ "s3://$BUCKET_NAME/" --delete
+aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+Write-Host "Live at: $WEB_URL"
 ```
 
-### Step 4: Create the CloudFront distribution
+### Subsequent frontend deployments
 
-This single distribution serves both the frontend (from S3) and the API (from API Gateway) using path-based behaviors:
-
-- `Default (*)` → S3 origin (SPA with `index.html` fallback for client-side routing)
-- `/v1/*` → API Gateway origin (forwards `Authorization` header, cache disabled)
-
-Extract the API Gateway domain (strip `https://` and the stage path):
+After any frontend code change:
 
 ```powershell
-$API_DOMAIN     = ($env:API_URL -replace "^https://","").Split("/")[0]
-$API_STAGE_PATH = "/test"
-$CALLER_REF     = "enterprise-app-test-$([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
-```
-
-Write the distribution config to a temp file (PowerShell here-string):
-
-```powershell
-@"
-{
-  "CallerReference": "$CALLER_REF",
-  "Comment": "enterprise-app-test",
-  "DefaultRootObject": "index.html",
-  "Origins": {
-    "Quantity": 2,
-    "Items": [
-      {
-        "Id": "S3Origin",
-        "DomainName": "$BUCKET_NAME.s3.$REGION.amazonaws.com",
-        "S3OriginConfig": { "OriginAccessIdentity": "" }
-      },
-      {
-        "Id": "APIOrigin",
-        "DomainName": "$API_DOMAIN",
-        "CustomOriginConfig": {
-          "HTTPSPort": 443,
-          "OriginProtocolPolicy": "https-only",
-          "OriginSSLProtocols": { "Quantity": 1, "Items": ["TLSv1.2"] }
-        },
-        "OriginPath": "$API_STAGE_PATH"
-      }
-    ]
-  },
-  "DefaultCacheBehavior": {
-    "TargetOriginId": "S3Origin",
-    "ViewerProtocolPolicy": "redirect-to-https",
-    "AllowedMethods": { "Quantity": 2, "Items": ["GET","HEAD"] },
-    "CachedMethods":  { "Quantity": 2, "Items": ["GET","HEAD"] },
-    "ForwardedValues": { "QueryString": false, "Cookies": { "Forward": "none" } },
-    "MinTTL": 0, "DefaultTTL": 86400, "MaxTTL": 31536000,
-    "Compress": true
-  },
-  "CacheBehaviors": {
-    "Quantity": 1,
-    "Items": [{
-      "PathPattern": "/v1/*",
-      "TargetOriginId": "APIOrigin",
-      "ViewerProtocolPolicy": "https-only",
-      "AllowedMethods": { "Quantity": 7, "Items": ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"] },
-      "CachedMethods":  { "Quantity": 2, "Items": ["GET","HEAD"] },
-      "ForwardedValues": {
-        "QueryString": true,
-        "Headers": { "Quantity": 2, "Items": ["Authorization","Content-Type"] },
-        "Cookies": { "Forward": "none" }
-      },
-      "MinTTL": 0, "DefaultTTL": 0, "MaxTTL": 0,
-      "Compress": false
-    }]
-  },
-  "CustomErrorResponses": {
-    "Quantity": 1,
-    "Items": [{ "ErrorCode": 403, "ResponseCode": "200", "ResponsePagePath": "/index.html", "ErrorCachingMinTTL": 0 }]
-  },
-  "Enabled": true,
-  "PriceClass": "PriceClass_100",
-  "HttpVersion": "http2"
-}
-"@ | Out-File -Encoding utf8 "$env:TEMP\cf-dist.json"
-```
-
-Create the distribution and save the ID:
-
-```powershell
-$DISTRIBUTION_ID = aws cloudfront create-distribution `
-  --distribution-config "file://$env:TEMP/cf-dist.json" `
-  --query "Distribution.Id" --output text
-
-$CF_DOMAIN = aws cloudfront get-distribution `
-  --id $DISTRIBUTION_ID --query "Distribution.DomainName" --output text
-
-Write-Host "Distribution ID : $DISTRIBUTION_ID"
-Write-Host "CloudFront URL  : https://$CF_DOMAIN"
-```
-
-### Step 5: Grant CloudFront access to the S3 bucket
-
-While the distribution is deploying (~5 minutes), set the bucket policy:
-
-```powershell
-@"
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Sid": "AllowCloudFrontServicePrincipal",
-    "Effect": "Allow",
-    "Principal": { "Service": "cloudfront.amazonaws.com" },
-    "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::$BUCKET_NAME/*",
-    "Condition": {
-      "StringEquals": {
-        "AWS:SourceArn": "arn:aws:cloudfront::${ACCOUNT_ID}:distribution/$DISTRIBUTION_ID"
-      }
-    }
-  }]
-}
-"@ | Out-File -Encoding utf8 "$env:TEMP\s3-policy.json"
-
-aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy "file://$env:TEMP/s3-policy.json"
-```
-
-### Step 6: Wait for the distribution to deploy
-
-```powershell
-aws cloudfront wait distribution-deployed --id $DISTRIBUTION_ID
-Write-Host "Live at: https://$CF_DOMAIN"
-```
-
-### Step 7: Subsequent frontend deployments
-
-After any code change:
-
-```powershell
-cd web; npm run build; cd ..
+npm --prefix web run build
 aws s3 sync web/dist/ "s3://$BUCKET_NAME/" --delete
 aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
 ```
@@ -407,24 +295,16 @@ aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/
 
 ## Stack Teardown
 
-To destroy all AWS resources when you are done:
+S3 must be emptied before CloudFormation can delete the bucket. Everything else is handled by `cloudformation delete-stack`.
 
 ```powershell
-# Disable and delete the CloudFront distribution (if created)
-$CF_CONFIG = aws cloudfront get-distribution-config --id $DISTRIBUTION_ID | ConvertFrom-Json
-$CF_CONFIG.DistributionConfig.Enabled = $false
-$ETAG = $CF_CONFIG.ETag
-$CF_CONFIG.DistributionConfig | ConvertTo-Json -Depth 20 | Out-File -Encoding utf8 "$env:TEMP\cf-disabled.json"
-aws cloudfront update-distribution --id $DISTRIBUTION_ID --distribution-config "file://$env:TEMP/cf-disabled.json" --if-match $ETAG
-aws cloudfront wait distribution-deployed --id $DISTRIBUTION_ID
-$ETAG2 = (aws cloudfront get-distribution --id $DISTRIBUTION_ID | ConvertFrom-Json).ETag
-aws cloudfront delete-distribution --id $DISTRIBUTION_ID --if-match $ETAG2
+# Read outputs
+$BUCKET_NAME     = aws cloudformation describe-stacks --stack-name enterprise-app-test --query "Stacks[0].Outputs[?OutputKey=='WebBucketName'].OutputValue" --output text
 
-# Empty and delete the S3 bucket
+# Empty the S3 bucket so CloudFormation can delete it
 aws s3 rm "s3://$BUCKET_NAME" --recursive
-aws s3 rb "s3://$BUCKET_NAME"
 
-# Delete the SAM/CloudFormation stack (removes Lambda, API Gateway, Cognito, RDS, VPC)
+# Delete the stack (removes all resources: Lambda, API GW, Cognito, RDS, VPC, S3, CloudFront)
 aws cloudformation delete-stack --stack-name enterprise-app-test
 aws cloudformation wait stack-delete-complete --stack-name enterprise-app-test
 ```
@@ -440,6 +320,9 @@ aws cloudformation wait stack-delete-complete --stack-name enterprise-app-test
 | `UserPoolClientId` | Cognito App Client ID |
 | `DBEndpoint` | RDS PostgreSQL hostname |
 | `DBPort` | RDS port (5432) |
+| `WebBucketName` | S3 bucket for the web UI bundle |
+| `WebDistributionId` | CloudFront distribution ID |
+| `WebURL` | Web UI URL (CloudFront) |
 
 Retrieve at any time:
 
