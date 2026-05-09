@@ -422,7 +422,7 @@ export function DeviceDetailPage() {
 
   function fetchDevice() {
     if (!session || !id) return;
-    getDevice(session.accessToken, id)
+    getDevice(session.idToken, id)
       .then((d) => { setDevice(d); setNotFound(false); setError(null); })
       .catch((err: unknown) => {
         if (err instanceof Error && (err as Error & { status?: number }).status === 404) {
@@ -477,8 +477,8 @@ export function DeviceDetailPage() {
         <>
           <InfoCard device={device} />
           <HealthGauges device={device} />
-          <TelemetryChart deviceId={device.id} token={session.accessToken} />
-          <ReadingsTable deviceId={device.id} token={session.accessToken} />
+          <TelemetryChart deviceId={device.id} token={session.idToken} />
+          <ReadingsTable deviceId={device.id} token={session.idToken} />
           <AlertTimeline />
         </>
       )}

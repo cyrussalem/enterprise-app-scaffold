@@ -222,8 +222,8 @@ export function FleetOverviewPage() {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      getDashboardSummary(session.accessToken),
-      getDevices(session.accessToken),
+      getDashboardSummary(session.idToken),
+      getDevices(session.idToken),
     ])
       .then(([summaryData, deviceData]) => {
         if (!cancelled) {

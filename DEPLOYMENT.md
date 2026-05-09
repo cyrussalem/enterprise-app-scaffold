@@ -192,6 +192,71 @@ SELECT * FROM "SequelizeMeta";  -- migration history
 
 ---
 
+## Part 2b — Seed Devices & Telemetry
+
+This seeds 50 simulated devices (sensors, trackers, meters, actuators, gateways) and 7 days of telemetry readings (~6,300 rows) into the production database. It does **not** create users — you must already have a registered, confirmed account (Part 3 → "Register a user").
+
+The seed script in `test/setup/seed-devices.js` loads your compiled models from `dist/`, so a TypeScript build is required.
+
+### Step 1: Build TypeScript
+
+```powershell
+npm run build
+```
+
+### Step 2: Look up your user's Cognito sub
+
+The seed script needs a `user_id` to assign devices to. Get it from AWS Cognito using the email you registered with:
+
+```powershell
+$env:SEED_USER_ID = aws cognito-idp admin-get-user `
+  --user-pool-id $env:USER_POOL_ID `
+  --username you@example.com `
+  --query "UserAttributes[?Name=='sub'].Value" `
+  --output text
+```
+
+Verify it printed a UUID (e.g. `a1b2c3d4-...`):
+
+```powershell
+$env:SEED_USER_ID
+```
+
+> `$env:USER_POOL_ID` must be set from Part 1 Step 4. If you opened a new terminal, re-run that block.
+
+### Step 3: Set connection variables
+
+These must match what you used for migrations in Part 2:
+
+```powershell
+$env:DB_HOST     = "<DBEndpoint from stack outputs>"
+$env:DB_PORT     = "5432"
+$env:DB_NAME     = "enterprise_app"
+$env:DB_USERNAME = "postgres"
+$env:DB_PASSWORD = "YOUR_STRONG_PASSWORD_HERE"
+$env:DB_SSL      = "true"
+$env:NODE_ENV    = "production"
+```
+
+### Step 4: Run the seed
+
+```powershell
+node test/setup/seed-devices.js
+```
+
+Expected output:
+
+```
+seeding devices for user: a1b2c3d4-...
+created 50 devices
+created 6300 telemetry readings
+device seed complete
+```
+
+> Running the seed a second time will create a second set of 50 devices alongside the first. To reset, connect via `psql` and run `TRUNCATE devices CASCADE;` before re-seeding.
+
+---
+
 ## Part 3 — Verify the API End-to-End
 
 ### Register a user

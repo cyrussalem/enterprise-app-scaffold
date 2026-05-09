@@ -67,9 +67,9 @@ export async function postConfirm(
   }
 }
 
-export async function getHealth(accessToken: string): Promise<unknown> {
+export async function getHealth(idToken: string): Promise<unknown> {
   const res = await fetch("/v1/health", {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) {
     throw new Error(`health request failed (${res.status})`);

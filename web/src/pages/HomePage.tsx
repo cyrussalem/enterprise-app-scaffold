@@ -16,7 +16,7 @@ export function HomePage() {
     if (!session) return;
     let cancelled = false;
     setLoading(true);
-    getHealth(session.accessToken)
+    getHealth(session.idToken)
       .then((data) => {
         if (!cancelled) setHealth(data);
       })

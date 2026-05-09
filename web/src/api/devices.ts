@@ -66,10 +66,10 @@ export interface QueryTelemetryOptions {
 }
 
 export async function getDashboardSummary(
-  accessToken: string
+  idToken: string
 ): Promise<FleetSummary> {
   const res = await fetch("/v1/dashboard/summary", {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) {
     throw new Error(`dashboard/summary failed (${res.status})`);
@@ -78,9 +78,9 @@ export async function getDashboardSummary(
   return body.summary;
 }
 
-export async function getDevices(accessToken: string): Promise<Device[]> {
+export async function getDevices(idToken: string): Promise<Device[]> {
   const res = await fetch("/v1/devices", {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) {
     throw new Error(`devices request failed (${res.status})`);
@@ -90,11 +90,11 @@ export async function getDevices(accessToken: string): Promise<Device[]> {
 }
 
 export async function getDevice(
-  accessToken: string,
+  idToken: string,
   deviceId: string
 ): Promise<FullDevice> {
   const res = await fetch(`/v1/devices/${deviceId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${idToken}` },
   });
   if (res.status === 404) throw Object.assign(new Error("device not found"), { status: 404 });
   if (!res.ok) throw new Error(`getDevice failed (${res.status})`);
@@ -103,7 +103,7 @@ export async function getDevice(
 }
 
 export async function queryTelemetry(
-  accessToken: string,
+  idToken: string,
   deviceId: string,
   opts: QueryTelemetryOptions
 ): Promise<TelemetryReading[]> {
@@ -116,7 +116,7 @@ export async function queryTelemetry(
   if (opts.offset != null) params.set("offset", String(opts.offset));
 
   const res = await fetch(`/v1/devices/${deviceId}/telemetry?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: { Authorization: `Bearer ${idToken}` },
   });
   if (!res.ok) throw new Error(`queryTelemetry failed (${res.status})`);
   const body = (await res.json()) as { ok: boolean; readings: TelemetryReading[] };

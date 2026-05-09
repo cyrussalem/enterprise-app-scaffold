@@ -8,11 +8,18 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load env from infra/env.local.json (written by seed-integration.js)
-const envPath = path.join(__dirname, '..', '..', 'infra', 'env.local.json');
-const fnEnv = JSON.parse(fs.readFileSync(envPath, 'utf8'))['apiFunction'] ?? {};
-for (const [k, v] of Object.entries(fnEnv)) {
-  if (typeof v === 'string') process.env[k] = v.replace(/host\.docker\.internal/g, '127.0.0.1');
+// Load env from infra/env.local.json if present (local dev only).
+// Existing env vars (set by the caller) take precedence so production values are not overwritten.
+try {
+  const envPath = path.join(__dirname, '..', '..', 'infra', 'env.local.json');
+  const fnEnv = JSON.parse(fs.readFileSync(envPath, 'utf8'))['apiFunction'] ?? {};
+  for (const [k, v] of Object.entries(fnEnv)) {
+    if (typeof v === 'string' && !process.env[k]) {
+      process.env[k] = v.replace(/host\.docker\.internal/g, '127.0.0.1');
+    }
+  }
+} catch {
+  // env.local.json absent — caller must set DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD/DB_SSL
 }
 
 const projectRoot = path.resolve(__dirname, '..', '..');
@@ -99,6 +106,9 @@ function shuffle(arr) {
 // ── Cognito: resolve demo user sub ─────────────────────────────────────────
 
 async function getDemoUserSub() {
+  // Production shortcut: set SEED_USER_ID to the target user's Cognito sub and skip Cognito auth.
+  if (process.env.SEED_USER_ID) return process.env.SEED_USER_ID;
+
   const {
     CognitoIdentityProviderClient,
     InitiateAuthCommand,
