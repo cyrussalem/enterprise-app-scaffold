@@ -1,4 +1,5 @@
 import { Sequelize } from "sequelize";
+import pg from "pg";
 import { loadDbConfig } from "./config";
 
 let sequelize: Sequelize | null = null;
@@ -14,7 +15,11 @@ export function getSequelize(): Sequelize {
         host: config.host,
         port: config.port,
         dialect: config.dialect,
+        dialectModule: pg,
         logging: config.logging ? console.log : false,
+        dialectOptions: config.ssl
+          ? { ssl: { require: true, rejectUnauthorized: false } }
+          : {},
         pool: {
           max: 2,
           min: 0,

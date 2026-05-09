@@ -84,7 +84,9 @@
       "PowerShell(Stop-Process -Id 40660 -Force)",
       "PowerShell(Stop-Process -Id 42576 -Force)",
       "PowerShell(@\\(39348, 39632, 13240, 41952, 29384\\) | ForEach-Object { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if \\($p\\) { \"$_ $\\($p.Name\\)\" } })",
-      "PowerShell(@\\(39348, 39632, 13240, 41952, 29384\\) | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Write-Output \"done\")"
+      "PowerShell(@\\(39348, 39632, 13240, 41952, 29384\\) | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Write-Output \"done\")",
+      "Bash(Get-ChildItem -Path C:\\\\Users\\\\Cyrus\\\\Software_Projects\\\\GitHub\\\\enterprise-app-scaffold -Recurse -ErrorAction SilentlyContinue)",
+      "Bash(aws cloudformation *)"
     ]
   }
 }

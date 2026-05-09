@@ -6,6 +6,7 @@ export interface DbConfig {
   password: string;
   dialect: "postgres";
   logging: boolean;
+  ssl: boolean;
 }
 
 export function loadDbConfig(): DbConfig {
@@ -17,5 +18,6 @@ export function loadDbConfig(): DbConfig {
     password: process.env.DB_PASSWORD ?? "postgres",
     dialect: "postgres",
     logging: process.env.DB_LOGGING === "true",
+    ssl: process.env.DB_SSL === "true",
   };
 }

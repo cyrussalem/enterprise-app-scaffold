@@ -52,6 +52,43 @@ Resources:
       - Key: Name
         Value:
           Fn::Sub: enterprise-app-${Environment}-private-b
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: VPC
+      InternetGatewayId:
+        Ref: InternetGateway
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: VPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: PublicRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId:
+        Ref: InternetGateway
+  SubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnetA
+      RouteTableId:
+        Ref: PublicRouteTable
+  SubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: PrivateSubnetB
+      RouteTableId:
+        Ref: PublicRouteTable
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -77,8 +114,13 @@ Resources:
         ToPort: 5432
         SourceSecurityGroupId:
           Ref: LambdaSecurityGroup
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: '0.0.0.0/0'
   PostgresInstance:
     Type: AWS::RDS::DBInstance
+    DependsOn: VPCGatewayAttachment
     Properties:
       DBInstanceIdentifier:
         Fn::Sub: enterprise-app-${Environment}-db
@@ -94,9 +136,9 @@ Resources:
       DBName: enterprise_app
       VPCSecurityGroups:
       - Ref: DBSecurityGroup
-      DBSubnetGroup:
+      DBSubnetGroupName:
         Ref: DBSubnetGroup
-      PubliclyAccessible: false
+      PubliclyAccessible: true
       DeletionProtection: false
       BackupRetentionPeriod: 1
   UserPool:
@@ -145,21 +187,35 @@ Resources:
               Header: Authorization
   apiFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - src/handlers/api.ts
+        External:
+        - pg-native
+        - pg-hstore
+        - mysql
+        - mysql2
+        - mariadb
+        - mssql
+        - tedious
+        - oracledb
+        - sqlite3
+        - better-sqlite3
+        Minify: false
+        Sourcemap: false
+        Target: node22
+      SamResourceId: apiFunction
     Properties:
       CodeUri: apiFunction
-      Handler: dist/handlers/api.handler
+      Handler: api.handler
       Runtime: nodejs22.x
       Architectures:
       - x86_64
       MemorySize: 256
       Timeout: 100
       Description: Consolidated API Lambda. Routes all /v1/* endpoints.
-      VpcConfig:
-        SecurityGroupIds:
-        - Ref: LambdaSecurityGroup
-        SubnetIds:
-        - Ref: PrivateSubnetA
-        - Ref: PrivateSubnetB
       Environment:
         Variables:
           DB_HOST:
@@ -175,13 +231,13 @@ Resources:
             Ref: DBUsername
           DB_PASSWORD:
             Ref: DBPassword
+          DB_SSL: 'true'
           COGNITO_CLIENT_ID:
             Ref: UserPoolClient
           COGNITO_USER_POOL_ID:
             Ref: UserPool
           COGNITO_ENDPOINT: ''
       Policies:
-      - VPCAccessPolicy: {}
       - Statement:
         - Effect: Allow
           Action:
@@ -243,8 +299,71 @@ Resources:
             Method: POST
             Auth:
               Authorizer: NONE
-    Metadata:
-      SamResourceId: apiFunction
+        ListDevicesApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices
+            Method: GET
+        CreateDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices
+            Method: POST
+        GetDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices/{id}
+            Method: GET
+        UpdateDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices/{id}
+            Method: PATCH
+        DeleteDeviceApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices/{id}
+            Method: DELETE
+        IngestTelemetryApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices/{id}/telemetry
+            Method: POST
+        QueryTelemetryApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/devices/{id}/telemetry
+            Method: GET
+        DashboardSummaryApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/dashboard/summary
+            Method: GET
+        WhatsAppWebhookApi:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: Api
+            Path: /v1/whatsapp/webhook
+            Method: POST
+            Auth:
+              Authorizer: NONE
 Outputs:
   WebEndpoint:
     Description: API Gateway endpoint URL
