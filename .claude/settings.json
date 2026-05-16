@@ -86,7 +86,10 @@
       "PowerShell(@\\(39348, 39632, 13240, 41952, 29384\\) | ForEach-Object { $p = Get-Process -Id $_ -ErrorAction SilentlyContinue; if \\($p\\) { \"$_ $\\($p.Name\\)\" } })",
       "PowerShell(@\\(39348, 39632, 13240, 41952, 29384\\) | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }; Write-Output \"done\")",
       "Bash(Get-ChildItem -Path C:\\\\Users\\\\Cyrus\\\\Software_Projects\\\\GitHub\\\\enterprise-app-scaffold -Recurse -ErrorAction SilentlyContinue)",
-      "Bash(aws cloudformation *)"
+      "Bash(aws cloudformation *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Cyrus\\\\Software_Projects\\\\GitHub\\\\enterprise-app-scaffold\\\\web\\\\\" -Recurse -Force | Select-Object FullName | ConvertTo-Json | Out-String)",
+      "mcp__playwright__browser_network_request",
+      "Bash(node test/setup/seed-devices.js)"
     ]
   }
 }

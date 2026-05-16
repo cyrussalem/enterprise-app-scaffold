@@ -1,142 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  CircularProgress,
-  Alert,
-  Chip,
-  Divider,
-} from "@mui/material";
+import { motion, useReducedMotion } from "framer-motion";
+import Box from "@mui/material/Box";
+import Grid from "@mui/material/Grid";
+import Button from "@mui/material/Button";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import ReactApexChart from "react-apexcharts";
 import type { ApexOptions } from "apexcharts";
 import { AppShell } from "../components/AppShell";
+import { PageHeader } from "../components/PageHeader";
+import { GlassCard } from "../components/GlassCard";
+import { KpiCard } from "../components/KpiCard";
+import { AlertTimelineItem } from "../components/AlertTimelineItem";
+import { SkeletonCard } from "../components/SkeletonCard";
+import { ErrorCard } from "../components/ErrorCard";
 import { DeviceMap } from "../components/DeviceMap";
 import { useAuth } from "../auth/AuthContext";
 import { getDashboardSummary, getDevices } from "../api/devices";
 import type { FleetSummary, Device } from "../api/devices";
-
-function KpiCard({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <Card sx={{ textAlign: "center" }}>
-      <CardContent>
-        <Typography variant="h3" sx={{ color, fontWeight: 700 }}>
-          {value}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {label}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatusDonut({ online, offline, warning }: { online: number; offline: number; warning: number }) {
-  const options: ApexOptions = {
-    chart: { type: "donut" },
-    labels: ["Online", "Offline", "Warning"],
-    colors: ["#4caf50", "#f44336", "#ff9800"],
-    legend: { position: "bottom" },
-    dataLabels: { enabled: true },
-  };
-  return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Device Status
-        </Typography>
-        <ReactApexChart
-          options={options}
-          series={[online, offline, warning]}
-          type="donut"
-          height={280}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-function TypeBarChart({ byType }: { byType: Partial<Record<string, number>> }) {
-  const entries = Object.entries(byType).filter(([, v]) => v !== undefined) as [
-    string,
-    number
-  ][];
-  const categories = entries.map(([k]) => k);
-  const data = entries.map(([, v]) => v);
-
-  const options: ApexOptions = {
-    chart: { type: "bar", toolbar: { show: false } },
-    xaxis: { categories },
-    colors: ["#1976d2"],
-    dataLabels: { enabled: false },
-    plotOptions: { bar: { borderRadius: 4 } },
-  };
-  return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Device Types
-        </Typography>
-        <ReactApexChart
-          options={options}
-          series={[{ name: "Count", data }]}
-          type="bar"
-          height={280}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-function HealthGauge({ score }: { score: number }) {
-  const color = score >= 80 ? "#4caf50" : score >= 50 ? "#ff9800" : "#f44336";
-  const options: ApexOptions = {
-    chart: { type: "radialBar" },
-    plotOptions: {
-      radialBar: {
-        hollow: { size: "60%" },
-        dataLabels: {
-          name: { show: true, offsetY: 20 },
-          value: {
-            show: true,
-            fontSize: "28px",
-            fontWeight: 700,
-            offsetY: -20,
-            formatter: (val: number) => `${val}%`,
-          },
-        },
-      },
-    },
-    colors: [color],
-    labels: ["Health Score"],
-  };
-  return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Fleet Health
-        </Typography>
-        <ReactApexChart
-          options={options}
-          series={[score]}
-          type="radialBar"
-          height={280}
-        />
-      </CardContent>
-    </Card>
-  );
-}
+import { darkChartBase } from "../lib/apexTheme";
+import { staggerContainer, fadeUpIn, instantVariants } from "../motion/variants";
 
 function formatRelative(dateStr: string | null): string {
   if (!dateStr) return "Unknown";
@@ -150,171 +33,261 @@ function formatRelative(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function AlertsFeed({ devices, onNavigate }: { devices: Device[]; onNavigate: (id: string) => void }) {
-  const alerts = devices
-    .filter((d) => d.status === "offline" || d.status === "warning")
-    .sort((a, b) => {
-      const ta = a.last_seen_at ?? a.updatedAt;
-      const tb = b.last_seen_at ?? b.updatedAt;
-      return new Date(tb).getTime() - new Date(ta).getTime();
-    })
-    .slice(0, 20);
+function StatusDonut({ online, offline, warning }: { online: number; offline: number; warning: number }) {
+  const options: ApexOptions = {
+    ...darkChartBase,
+    chart: { ...darkChartBase.chart, type: "donut" },
+    labels: ["Online", "Offline", "Warning"],
+    colors: ["#10b981", "#f43f5e", "#f59e0b"],
+    legend: { ...darkChartBase.legend, position: "bottom" },
+    dataLabels: { enabled: true, style: { fontFamily: "Manrope, sans-serif", fontSize: "11px" } },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "60%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: "TOTAL",
+              fontSize: "10px",
+              fontFamily: "Manrope, sans-serif",
+              color: "#64748b",
+              formatter: (w) => String(w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0)),
+            },
+          },
+        },
+      },
+    },
+    stroke: { width: 2, colors: ["#0d1526"] },
+  };
 
   return (
-    <Card sx={{ mt: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Recent Alerts
-        </Typography>
-        {alerts.length === 0 ? (
-          <Alert severity="success">No active alerts — all devices are online.</Alert>
-        ) : (
-          alerts.map((d, i) => (
-            <Box key={d.id}>
-              {i > 0 && <Divider />}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  py: 1.5,
-                  px: 1,
-                  borderRadius: 1,
-                  cursor: "pointer",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-                onClick={() => onNavigate(d.id)}
-              >
-                <Chip
-                  label={d.status}
-                  color={d.status === "offline" ? "error" : "warning"}
-                  size="small"
-                  sx={{ textTransform: "capitalize", minWidth: 72 }}
-                />
-                <Typography variant="body2" sx={{ flexGrow: 1 }}>
-                  {d.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {d.location_label ?? "Unknown location"}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 72, textAlign: "right" }}>
-                  {formatRelative(d.last_seen_at)}
-                </Typography>
-              </Box>
-            </Box>
-          ))
-        )}
-      </CardContent>
-    </Card>
+    <GlassCard sx={{ height: "100%" }}>
+      <Box sx={{ fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "14px", color: "#f1f5f9", mb: 1 }}>
+        Device Status
+      </Box>
+      <ReactApexChart options={options} series={[online, offline, warning]} type="donut" height={240} />
+    </GlassCard>
+  );
+}
+
+function TypeBarChart({ byType }: { byType: Partial<Record<string, number>> }) {
+  const entries = Object.entries(byType).filter(([, v]) => v !== undefined) as [string, number][];
+
+  const options: ApexOptions = {
+    ...darkChartBase,
+    chart: { ...darkChartBase.chart, type: "bar" },
+    xaxis: { ...darkChartBase.xaxis, categories: entries.map(([k]) => k) },
+    colors: ["#6366f1"],
+    dataLabels: { enabled: false },
+    plotOptions: {
+      bar: {
+        borderRadius: 6,
+        columnWidth: "50%",
+        distributed: false,
+      },
+    },
+    fill: {
+      type: "gradient",
+      gradient: { shade: "dark", type: "vertical", gradientToColors: ["#8b5cf6"], stops: [0, 100] },
+    },
+  };
+
+  return (
+    <GlassCard sx={{ height: "100%" }}>
+      <Box sx={{ fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "14px", color: "#f1f5f9", mb: 1 }}>
+        Device Types
+      </Box>
+      <ReactApexChart
+        options={options}
+        series={[{ name: "Count", data: entries.map(([, v]) => v) }]}
+        type="bar"
+        height={240}
+      />
+    </GlassCard>
+  );
+}
+
+function HealthGaugeChart({ score }: { score: number }) {
+  const color = score >= 80 ? "#10b981" : score >= 50 ? "#f59e0b" : "#f43f5e";
+  const options: ApexOptions = {
+    ...darkChartBase,
+    chart: { ...darkChartBase.chart, type: "radialBar" },
+    plotOptions: {
+      radialBar: {
+        hollow: { size: "60%", background: "transparent" },
+        track: { background: "rgba(148,163,184,0.08)", strokeWidth: "100%" },
+        dataLabels: {
+          name: {
+            show: true,
+            offsetY: 24,
+            color: "#64748b",
+            fontSize: "10px",
+            fontFamily: "Manrope, sans-serif",
+            fontWeight: 500,
+          },
+          value: {
+            show: true,
+            fontSize: "28px",
+            fontFamily: "Syne, sans-serif",
+            fontWeight: 700,
+            color: color,
+            offsetY: -14,
+            formatter: (v: number) => `${v}%`,
+          },
+        },
+      },
+    },
+    colors: [color],
+    labels: ["Health Score"],
+    fill: { type: "gradient", gradient: { shade: "dark", type: "horizontal", gradientToColors: [color], stops: [0, 100] } },
+  };
+
+  return (
+    <GlassCard sx={{ height: "100%" }}>
+      <Box sx={{ fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "14px", color: "#f1f5f9", mb: 1 }}>
+        Fleet Health
+      </Box>
+      <ReactApexChart options={options} series={[score]} type="radialBar" height={240} />
+    </GlassCard>
   );
 }
 
 export function FleetOverviewPage() {
-  const { session, logout } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
+
   const [summary, setSummary] = useState<FleetSummary | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     if (!session) return;
     let cancelled = false;
     setLoading(true);
-    Promise.all([
-      getDashboardSummary(session.idToken),
-      getDevices(session.idToken),
-    ])
+    Promise.all([getDashboardSummary(session.idToken), getDevices(session.idToken)])
       .then(([summaryData, deviceData]) => {
-        if (!cancelled) {
-          setSummary(summaryData);
-          setDevices(deviceData);
-        }
+        if (!cancelled) { setSummary(summaryData); setDevices(deviceData); setError(null); }
       })
       .catch((err: unknown) => {
-        if (!cancelled)
-          setError(err instanceof Error ? err.message : "Failed to load fleet data");
+        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load fleet data");
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [session]);
 
-  function handleLogout() {
-    logout();
-    navigate("/login", { replace: true });
-  }
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const alerts = devices
+    .filter((d) => d.status !== "online")
+    .sort((a, b) => new Date(b.last_seen_at ?? b.updatedAt).getTime() - new Date(a.last_seen_at ?? a.updatedAt).getTime())
+    .slice(0, 20);
+
+  const containerV = shouldReduceMotion ? instantVariants : staggerContainer;
+  const itemV = shouldReduceMotion ? instantVariants : fadeUpIn;
 
   return (
-    <AppShell userEmail={session?.user.email} onLogout={handleLogout}>
-      <Typography variant="h4" gutterBottom>
-        Fleet Overview
-      </Typography>
+    <AppShell>
+      <PageHeader
+        title="Fleet Overview"
+        subtitle={summary ? `Real-time monitoring across ${summary.total} devices` : "Real-time monitoring"}
+        actions={
+          <Button
+            size="small"
+            startIcon={<RefreshIcon sx={{ fontSize: 15 }} />}
+            onClick={fetchData}
+            disabled={loading}
+            sx={{
+              color: "#64748b",
+              fontSize: "12px",
+              borderColor: "rgba(148,163,184,0.15)",
+              "&:hover": { borderColor: "rgba(148,163,184,0.3)", color: "#94a3b8" },
+            }}
+            variant="outlined"
+          >
+            Refresh
+          </Button>
+        }
+      />
 
-      {loading && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 4 }}>
-          <CircularProgress />
-          <Typography>Loading fleet data…</Typography>
-        </Box>
-      )}
-
-      {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {!loading && !error && summary && (
+      {/* KPI cards */}
+      {loading ? (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <Grid key={i} size={{ xs: 6, sm: 3 }}>
+              <SkeletonCard height={110} />
+            </Grid>
+          ))}
+        </Grid>
+      ) : error ? (
+        <ErrorCard message="Could not load fleet data" detail={error} onRetry={fetchData} />
+      ) : summary ? (
         <>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <KpiCard label="Total" value={summary.total} color="text.primary" />
+          <motion.div variants={containerV} initial="hidden" animate="visible">
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <motion.div variants={itemV}><KpiCard label="Total Devices" value={summary.total} color="primary" /></motion.div>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <motion.div variants={itemV}><KpiCard label="Online" value={summary.online} color="online" /></motion.div>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <motion.div variants={itemV}><KpiCard label="Offline" value={summary.offline} color="offline" /></motion.div>
+              </Grid>
+              <Grid size={{ xs: 6, sm: 3 }}>
+                <motion.div variants={itemV}><KpiCard label="Warning" value={summary.warning} color="warning" /></motion.div>
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <KpiCard label="Online" value={summary.online} color="#4caf50" />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <KpiCard label="Offline" value={summary.offline} color="#f44336" />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <KpiCard label="Warning" value={summary.warning} color="#ff9800" />
-            </Grid>
-          </Grid>
+          </motion.div>
 
+          {/* Charts row */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <StatusDonut
-                online={summary.online}
-                offline={summary.offline}
-                warning={summary.warning}
-              />
+              <StatusDonut online={summary.online} offline={summary.offline} warning={summary.warning} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <TypeBarChart byType={summary.byType} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <HealthGauge score={summary.healthScore} />
+              <HealthGaugeChart score={summary.healthScore} />
             </Grid>
           </Grid>
 
-          <Card>
-            <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-              <Typography variant="h6" gutterBottom>
-                Device Locations
-              </Typography>
-              <DeviceMap devices={devices} />
-            </CardContent>
-          </Card>
+          {/* Map */}
+          <GlassCard sx={{ mb: 3, p: "16px" }}>
+            <Box sx={{ fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "14px", color: "#f1f5f9", mb: 2 }}>
+              Device Locations
+            </Box>
+            <DeviceMap devices={devices} />
+          </GlassCard>
 
-          <AlertsFeed
-            devices={devices}
-            onNavigate={(id) => navigate(`/devices/${id}`)}
-          />
+          {/* Alerts feed */}
+          <GlassCard>
+            <Box sx={{ fontFamily: "Syne, sans-serif", fontWeight: 600, fontSize: "14px", color: "#f1f5f9", mb: 2 }}>
+              Recent Alerts
+            </Box>
+            {alerts.length === 0 ? (
+              <Box sx={{ fontFamily: "Manrope, sans-serif", fontSize: "13px", color: "#475569", py: 2 }}>
+                No active alerts — all devices online.
+              </Box>
+            ) : (
+              alerts.map((d) => (
+                <AlertTimelineItem
+                  key={d.id}
+                  status={d.status}
+                  name={d.name}
+                  location={d.location_label}
+                  timeAgo={formatRelative(d.last_seen_at)}
+                  onClick={() => navigate(`/devices/${d.id}`)}
+                />
+              ))
+            )}
+          </GlassCard>
         </>
-      )}
+      ) : null}
     </AppShell>
   );
 }

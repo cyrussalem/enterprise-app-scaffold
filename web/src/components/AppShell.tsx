@@ -1,41 +1,75 @@
+import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { Link as RouterLink } from "react-router-dom";
-import { AppBar, Toolbar, Typography, Button, Box, Container } from "@mui/material";
+import Box from "@mui/material/Box";
+import { Sidebar, MobileSidebar } from "./Sidebar";
+import { TopBar } from "./TopBar";
+
+const EXPANDED_W = 240;
+const COLLAPSED_W = 64;
+const MOBILE_BP = 768;
 
 interface AppShellProps {
-  userEmail?: string;
-  onLogout: () => void;
   children: ReactNode;
 }
 
-export function AppShell({ userEmail, onLogout, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BP);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < MOBILE_BP);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    function handleStorageChange() {
+      try {
+        setSidebarCollapsed(localStorage.getItem("sidebar-collapsed") === "true");
+      } catch {}
+    }
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  const sidebarWidth = sidebarCollapsed ? COLLAPSED_W : EXPANDED_W;
+
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <AppBar position="static" color="primary">
-        <Toolbar>
-          <Typography variant="h6" sx={{ mr: 3 }}>
-            IoT Platform
-          </Typography>
-          <Button color="inherit" component={RouterLink} to="/">
-            Home
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/fleet">
-            Fleet
-          </Button>
-          <Box sx={{ flexGrow: 1 }} />
-          {userEmail && (
-            <Typography variant="body2" sx={{ mr: 2 }}>
-              {userEmail}
-            </Typography>
-          )}
-          <Button color="inherit" onClick={onLogout} data-testid="logout-button">
-            Log out
-          </Button>
-        </Toolbar>
-      </AppBar>
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {children}
-      </Container>
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {isMobile ? (
+        <MobileSidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      ) : (
+        <Sidebar />
+      )}
+
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          ml: isMobile ? 0 : `${sidebarWidth}px`,
+          mt: "52px",
+          minHeight: "calc(100vh - 52px)",
+          transition: "margin-left 0.3s",
+          maxWidth: "1440px",
+          width: "100%",
+        }}
+      >
+        <TopBar
+          sidebarWidth={sidebarWidth}
+          isMobile={isMobile}
+          onMenuClick={() => setDrawerOpen(true)}
+        />
+        <Box sx={{ px: { xs: 2, md: 4 }, py: 3 }}>{children}</Box>
+      </Box>
     </Box>
   );
 }
