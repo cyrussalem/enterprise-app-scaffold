@@ -1,4 +1,5 @@
 {
+  "enabledMcpjsonServers": ["postgres"],
   "permissions": {
     "allow": [
       "Bash(docker exec *)",

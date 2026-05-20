@@ -20,9 +20,20 @@ function reconstructUrl(event: APIGatewayProxyEvent): string {
   return `${proto}://${host}${path}`;
 }
 
+const log = (msg: string, data?: unknown) => {
+  const ts = new Date().toISOString();
+  if (data !== undefined) {
+    console.log(`[whatsapp] ${ts} ${msg}`, JSON.stringify(data, null, 2));
+  } else {
+    console.log(`[whatsapp] ${ts} ${msg}`);
+  }
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  log("Webhook received", { method: event.httpMethod, path: event.path, isBase64Encoded: event.isBase64Encoded });
+
   const rawBody = event.isBase64Encoded
     ? Buffer.from(event.body ?? "", "base64").toString("utf-8")
     : (event.body ?? "");
@@ -31,26 +42,35 @@ export const handler = async (
   const from = params.From ?? "";
   const messageBody = params.Body ?? "";
 
+  log("Parsed Twilio payload", { From: from, Body: messageBody });
+
   // Validate Twilio signature (skip in local dev via env var)
   if (!process.env.TWILIO_SKIP_SIGNATURE_VALIDATION) {
     const signature = event.headers?.["X-Twilio-Signature"] ?? event.headers?.["x-twilio-signature"] ?? "";
     const url = reconstructUrl(event);
+    log("Validating Twilio signature", { url, signaturePresent: !!signature });
     if (!validateTwilioSignature(signature, url, params)) {
+      log("Signature validation FAILED — returning 403");
       return json(403, { ok: false, message: "invalid signature" });
     }
+    log("Signature validation passed");
+  } else {
+    log("Signature validation SKIPPED (TWILIO_SKIP_SIGNATURE_VALIDATION is set)");
   }
 
   // Strip "whatsapp:" prefix to get the plain E.164 number
   const phoneNumber = from.replace(/^whatsapp:/i, "");
   if (!phoneNumber) {
+    log("Missing From field — returning 400");
     return json(400, { ok: false, message: "missing From field" });
   }
 
-  // Resolve sender to a user account
+  log(`Looking up user profile for ${phoneNumber}`);
   const { UserProfile } = initModels();
   const profile = await UserProfile.findOne({ where: { whatsapp_number: phoneNumber } });
 
   if (!profile) {
+    log(`No user profile found for ${phoneNumber} — sending unregistered reply`);
     await sendWhatsApp(
       phoneNumber,
       "Your WhatsApp number is not registered with this platform. " +
@@ -59,11 +79,14 @@ export const handler = async (
     return json(200, { ok: true });
   }
 
-  // Build device context for Claude
+  log(`Profile found`, { userId: profile.user_id });
+
+  log("Fetching fleet summary and device list from DB...");
   const [summary, devices] = await Promise.all([
     getFleetSummary(profile.user_id),
     listDevices({ userId: profile.user_id, limit: 100 }),
   ]);
+  log(`Fleet data loaded`, { deviceCount: devices.length, healthScore: (summary as unknown as Record<string, unknown>).healthScore });
 
   const deviceContext = {
     summary,
@@ -82,9 +105,13 @@ export const handler = async (
   };
 
   try {
+    log(`Calling Claude with question: "${messageBody}"`);
     const reply = await generateReply(messageBody, deviceContext);
+    log(`Claude replied: "${reply}"`);
     await sendWhatsApp(phoneNumber, reply);
-  } catch {
+    log(`WhatsApp reply sent to ${phoneNumber}`);
+  } catch (err) {
+    log("Error generating or sending reply", { error: String(err) });
     await sendWhatsApp(phoneNumber, "Sorry, I couldn't process your request right now. Please try again.");
   }
 
